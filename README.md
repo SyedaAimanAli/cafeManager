@@ -1,14 +1,102 @@
-# ☕ Scandish - Cafe Management System
+# ☕ RollUp - Multi-Tenant Cafe Management Platform
 
-A modern, responsive cafe management application built with **Blazor Server** and **ASP.NET Core 8**. Designed for seamless customer ordering and efficient kitchen operations with real-time updates.
+A modern, high-performance cafe operations and customer ordering platform built with **Blazor Server** and **ASP.NET Core 10 / PostgreSQL**. Features real-time kitchen queues, table QR ordering, dynamic branding design studios, printable menus, and detailed analytics.
 
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
-![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet)
+![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)
 ![Language](https://img.shields.io/badge/Language-C%23-239120?logo=csharp)
+![Container](https://img.shields.io/badge/Container-Podman%20%7C%20Docker-purple?logo=podman)
 
-##  Overview
+---
 
-Scandish is a full-stack cafe management platform that streamlines the entire customer experience—from browsing a dynamic menu to real-time order tracking—while providing kitchen staff with an efficient Kanban-style dashboard for order management.
+## 🚀 Production Deployment Guide (RHEL / Podman / Nginx)
+
+This repository includes automated container configurations and deployment scripts for Linux RHEL servers using **Podman**, **Nginx reverse proxy**, and **PostgreSQL**, exposed on port **`5088`** for domain **`rollup.eraconnect.net`**.
+
+### 1. Clone & Quick Deploy with Podman
+```bash
+git clone https://github.com/your-username/RollUp.git
+cd RollUp/RollUp
+
+# Run the automated deployment script (builds image, stops previous container, runs on port 5088)
+chmod +x deploy-podman.sh
+./deploy-podman.sh
+```
+
+*(Alternatively with podman-compose)*:
+```bash
+podman-compose up -d --build
+```
+
+---
+
+### 2. Configure Environment & Database (PostgreSQL)
+To customize database credentials, pass environment variables to `deploy-podman.sh` or edit `docker-compose.yml`:
+```bash
+export DB_HOST="127.0.0.1"      # or host.containers.internal
+export DB_PORT="5432"
+export DB_NAME="rollup"
+export DB_USER="postgres"
+export DB_PASS="your_secure_password"
+
+./deploy-podman.sh
+```
+
+---
+
+### 3. Configure Nginx Reverse Proxy (`rollup.eraconnect.net`)
+Copy the provided [`nginx-rollup.conf`](file:///home/adnan/repos/RollUp/RollUp/nginx-rollup.conf) to your Nginx configuration directory:
+
+```bash
+sudo cp nginx-rollup.conf /etc/nginx/conf.d/rollup.conf
+```
+
+**Nginx Configuration (`/etc/nginx/conf.d/rollup.conf`)**:
+```nginx
+# WebSocket / SignalR Connection Upgrade
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 80;
+    server_name rollup.eraconnect.net;
+
+    location / {
+        proxy_pass http://127.0.0.1:5088;
+        
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # SignalR long-lived WebSocket timeout
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+        proxy_buffering off;
+    }
+}
+```
+
+---
+
+### 4. Enable SSL with Let's Encrypt
+```bash
+sudo certbot --nginx -d rollup.eraconnect.net
+sudo nginx -t && sudo systemctl reload nginx
+```
+Your app is now securely live at **`https://rollup.eraconnect.net`**!
+
+---
+
+## 📖 Overview
+
+RollUp is a full-stack cafe management platform that streamlines the entire customer experience—from browsing a dynamic menu to real-time order tracking—while providing kitchen staff with an efficient Kanban-style dashboard for order management.
 
 ### Key Highlights
 -  **Real-time Updates** using SignalR for instant order tracking
@@ -52,7 +140,7 @@ Scandish is a full-stack cafe management platform that streamlines the entire cu
 ##  Project Structure
 
 ```
-CafeManager/
+RollUp/
 ├── API/                          # REST API endpoints
 │   ├── Controllers/              # MenuController, OrdersController, etc.
 │   ├── Hubs/                     # SignalR hubs for real-time updates
@@ -81,7 +169,7 @@ CafeManager/
 │
 ├── Shared/                       # Shared components
 │   ├── Layouts/                  # MainLayout component
-│   └── UI/                       # Reusable UI components (ScandishButton, etc.)
+│   └── UI/                       # Reusable UI components (RollUpButton, etc.)
 │
 ├── Pages/                        # Razor pages (_Host.cshtml, Error pages)
 ├── Styles/                       # Global CSS
@@ -92,7 +180,7 @@ CafeManager/
 
 ##  Architecture
 
-Scandish follows **Clean Architecture** principles with clear separation of concerns:
+RollUp follows **Clean Architecture** principles with clear separation of concerns:
 
 ```
 ┌─────────────────────────────────┐
@@ -124,24 +212,24 @@ Scandish follows **Clean Architecture** principles with clear separation of conc
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/SyedaAimanAli/cafeManager.git
-   cd cafeManager
+   git clone https://github.com/SyedaAimanAli/RollUp.git
+   cd RollUp
    ```
 
 2. **Install dependencies**
    ```bash
-   cd CafeManager
+   cd RollUp
    npm install
    dotnet restore
    ```
 
 3. **Configure database connection**
    
-   Edit `CafeManager/appsettings.json`:
+   Edit `RollUp/appsettings.json`:
    ```json
    {
      "ConnectionStrings": {
-       "DefaultConnection": "Host=localhost;Database=cafemanager;User Id=postgres;Password=yourpassword;"
+       "DefaultConnection": "Host=localhost;Database=rollup;User Id=postgres;Password=yourpassword;"
      }
    }
    ```
@@ -153,7 +241,7 @@ Scandish follows **Clean Architecture** principles with clear separation of conc
 
 5. **Run the application**
    ```bash
-   dotnet run --project CafeManager.csproj
+   dotnet run --project RollUp.csproj
    ```
 
 6. **Access the application**
@@ -201,15 +289,15 @@ GET    /api/queue/stats        - Get queue statistics
 SignalR manages WebSocket connections for instant updates across all connected clients. When an order status changes, notifications are broadcast to customers and kitchen staff simultaneously.
 
 **Key Files:**
-- [OrderHub.cs](CafeManager/API/Hubs/OrderHub.cs) - Order update hub
-- [QueueHub.cs](CafeManager/API/Hubs/QueueHub.cs) - Queue status hub
+- [OrderHub.cs](RollUp/API/Hubs/OrderHub.cs) - Order update hub
+- [QueueHub.cs](RollUp/API/Hubs/QueueHub.cs) - Queue status hub
 
 ### Audio Notifications
 Audio alerts use JavaScript interop to trigger browser notifications. The system waits for user interaction to enable audio due to browser autoplay restrictions.
 
 **Files:**
-- [audio.js](CafeManager/wwwroot/js/audio.js) - Audio playback handler
-- [OrderNotificationService.cs](CafeManager/Core/Services/OrderNotificationService.cs)
+- [audio.js](RollUp/wwwroot/js/audio.js) - Audio playback handler
+- [OrderNotificationService.cs](RollUp/Core/Services/OrderNotificationService.cs)
 
 ### Image Storage
 Menu item images are stored as Base64 strings in the database, eliminating the need for external storage services while keeping the system self-contained.
@@ -256,7 +344,7 @@ Please ensure:
 
 ##  Documentation
 
-- [Project Summary](CafeManager/ProjectSummary.md) - Detailed technical breakdown
+- [Project Summary](RollUp/ProjectSummary.md) - Detailed technical breakdown
 - [Architecture Decisions](docs/ARCHITECTURE.md) - Design rationale (coming soon)
 - [API Documentation](docs/API.md) - Comprehensive endpoint reference (coming soon)
 

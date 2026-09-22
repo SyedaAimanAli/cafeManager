@@ -1,0 +1,198 @@
+﻿@using RollUp.Core.Models
+
+@if (IsOpen && Item != null)
+{
+    <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+        <div class="absolute inset-0 bg-black/50" @onclick="Close"></div>
+        <div class="relative bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+            <div class="flex-shrink-0 relative h-48 overflow-hidden rounded-t-3xl sm:rounded-t-3xl">
+                <img src="@Item.ImageUrl" alt="@Item.Name" class="w-full h-full object-cover" />
+                <button @onclick="Close" 
+                        class="absolute top-4 right-4 p-2 bg-white/90 rounded-full shadow-lg hover:bg-white transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+                @if (!Item.IsAvailable)
+                {
+                    <div class="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <span class="bg-red-500 text-white px-4 py-2 rounded-full font-semibold">Sold Out</span>
+                    </div>
+                }
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                <div>
+                    <div class="flex items-start justify-between mb-2">
+                        <h2 class="font-display text-2xl font-semibold text-cafe-espresso">@Item.Name</h2>
+                        <span class="text-xl font-bold text-cafe-caramel">$@Item.Price.ToString("F2")</span>
+                    </div>
+                    <p class="text-gray-600">@Item.Description</p>
+                    @if (Item.Tags.Any())
+                    {
+                        <div class="flex flex-wrap gap-2 mt-3">
+                            @foreach (var tag in Item.Tags)
+                            {
+                                <span class="px-2 py-1 bg-cafe-cream text-cafe-mocha text-xs rounded-full">@tag</span>
+                            }
+                        </div>
+                    }
+                </div>
+
+                @if (Item.Variants.Any())
+                {
+                    <div>
+                        <h3 class="font-medium text-cafe-espresso mb-3">Size</h3>
+                        <div class="flex flex-wrap gap-2">
+                            @foreach (var variant in Item.Variants)
+                            {
+                                <button @onclick="() => SelectedVariant = variant.Name"
+                                        class="@GetVariantClass(variant.Name)">
+                                    @variant.Name
+                                    @if (variant.PriceModifier > 0)
+                                    {
+                                        <span class="text-xs ml-1">(+$@variant.PriceModifier.ToString("F2"))</span>
+                                    }
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+
+                @if (Item.Addons.Any())
+                {
+                    <div>
+                        <h3 class="font-medium text-cafe-espresso mb-3">Add-ons</h3>
+                        <div class="space-y-2">
+                            @foreach (var addon in Item.Addons)
+                            {
+                                <label class="flex items-center justify-between p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
+                                    <div class="flex items-center gap-3">
+                                        <input type="checkbox" 
+                                               checked="@SelectedAddons.Contains(addon.Name)"
+                                               @onchange="() => ToggleAddon(addon.Name)"
+                                               class="w-5 h-5 rounded border-gray-300 text-cafe-caramel focus:ring-cafe-caramel" />
+                                        <span class="text-cafe-espresso">@addon.Name</span>
+                                    </div>
+                                    <span class="text-cafe-mocha font-medium">+$@addon.Price.ToString("F2")</span>
+                                </label>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <div>
+                    <h3 class="font-medium text-cafe-espresso mb-3">Special Instructions</h3>
+                    <textarea @bind="SpecialInstructions" 
+                              placeholder="Any special requests?"
+                              rows="2"
+                              class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cafe-caramel focus:border-transparent resize-none"></textarea>
+                </div>
+
+            </div>
+
+            <div class="flex-shrink-0 px-6 py-4 bg-stone-50 border-t border-stone-200 rounded-b-3xl">
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-3 bg-gray-100 rounded-xl p-1">
+                        <button @onclick="() => Quantity = Math.Max(1, Quantity - 1)"
+                                class="w-10 h-10 rounded-lg bg-white shadow flex items-center justify-center hover:bg-gray-50 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                            </svg>
+                        </button>
+                        <span class="font-semibold text-cafe-espresso w-8 text-center">@Quantity</span>
+                        <button @onclick="() => Quantity++"
+                                class="w-10 h-10 rounded-lg bg-white shadow flex items-center justify-center hover:bg-gray-50 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <button @onclick="Submit"
+                            disabled="@(!Item.IsAvailable)"
+                            class="flex-1 py-4 bg-cafe-espresso text-white font-semibold rounded-xl hover:bg-cafe-mocha transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        Add to Order - $@CalculateTotal().ToString("F2")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public MenuItem? Item { get; set; }
+    [Parameter] public EventCallback<CartItem> OnAddToCart { get; set; }
+
+    private string SelectedVariant { get; set; } = string.Empty;
+    private List<string> SelectedAddons { get; set; } = new();
+    private string SpecialInstructions { get; set; } = string.Empty;
+    private int Quantity { get; set; } = 1;
+
+    protected override void OnParametersSet()
+    {
+        if (Item != null && string.IsNullOrEmpty(SelectedVariant))
+        {
+            SelectedVariant = Item.Variants.FirstOrDefault()?.Name ?? string.Empty;
+            SelectedAddons.Clear();
+            SpecialInstructions = string.Empty;
+            Quantity = 1;
+        }
+    }
+
+    private void ToggleAddon(string addon)
+    {
+        if (SelectedAddons.Contains(addon))
+            SelectedAddons.Remove(addon);
+        else
+            SelectedAddons.Add(addon);
+    }
+
+    private string GetVariantClass(string variant)
+    {
+        var baseClass = "px-4 py-2 rounded-xl text-sm font-medium transition-colors ";
+        return variant == SelectedVariant
+            ? baseClass + "bg-cafe-espresso text-white"
+            : baseClass + "bg-gray-100 text-cafe-mocha hover:bg-gray-200";
+    }
+
+    private decimal CalculateTotal()
+    {
+        if (Item == null) return 0;
+        
+        var basePrice = Item.Price;
+        var variant = Item.Variants.FirstOrDefault(v => v.Name == SelectedVariant);
+        if (variant != null) basePrice += variant.PriceModifier;
+        
+        var addonsPrice = Item.Addons
+            .Where(a => SelectedAddons.Contains(a.Name))
+            .Sum(a => a.Price);
+        
+        return (basePrice + addonsPrice) * Quantity;
+    }
+
+    private async Task Close()
+    {
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private async Task Submit()
+    {
+        if (Item == null || !Item.IsAvailable) return;
+
+        var cartItem = new CartItem
+        {
+            MenuItem = Item,
+            Quantity = Quantity,
+            SelectedVariant = SelectedVariant,
+            SelectedAddons = new List<string>(SelectedAddons),
+            SpecialInstructions = SpecialInstructions
+        };
+
+        await OnAddToCart.InvokeAsync(cartItem);
+        await Close();
+    }
+}

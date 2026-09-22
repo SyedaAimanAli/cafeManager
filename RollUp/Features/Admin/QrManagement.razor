@@ -1,0 +1,279 @@
+@page "/manage/qr"
+@using RollUp.Core.Interfaces
+@using RollUp.Application.DTOs
+@inject IBrandingService BrandingService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+
+<PageTitle>Printable QR Code Card - RollUp</PageTitle>
+
+<div class="min-h-screen bg-stone-50 pb-20 md:pb-0">
+    <AdminNavbar />
+
+    <!-- Action Bar -->
+    <div class="bg-white border-b border-stone-200 no-print">
+        <div class="max-w-7xl mx-auto px-4 md:px-6 py-4">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-xl font-bold text-cafe-espresso">Printable Table QR Card</h1>
+                    <p class="text-xs text-stone-500">Custom branded QR cards for table stands, counter tents, and wall displays</p>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button @onclick="TriggerPrint"
+                            class="px-5 py-2.5 bg-cafe-espresso text-white text-sm font-semibold rounded-xl hover:bg-cafe-mocha transition-all shadow-sm flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                        <span>Print QR Card</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            <!-- Left Customization Controls (Hidden on Print) -->
+            <div class="lg:col-span-5 space-y-6 no-print">
+                <div class="bg-white rounded-3xl p-6 md:p-7 border border-stone-200 shadow-xs space-y-5">
+                    <div>
+                        <h2 class="font-bold text-stone-800 text-base">QR Card Options</h2>
+                        <p class="text-xs text-stone-500">Configure target table, scan prompt, and card size</p>
+                    </div>
+
+                    <div class="space-y-4 text-sm">
+                        <!-- Table Selection -->
+                        <div>
+                            <label class="block font-semibold text-stone-700 mb-1">Target Placement</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button @onclick='() => SetTableType("general")'
+                                        class="py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all @(tableType == "general" ? "border-amber-800 bg-amber-50 text-amber-900" : "border-stone-200 text-stone-600 hover:bg-stone-50")">
+                                    General Menu (Walk-in)
+                                </button>
+                                <button @onclick='() => SetTableType("table")'
+                                        class="py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all @(tableType == "table" ? "border-amber-800 bg-amber-50 text-amber-900" : "border-stone-200 text-stone-600 hover:bg-stone-50")">
+                                    Specific Table #
+                                </button>
+                            </div>
+                        </div>
+
+                        @if (tableType == "table")
+                        {
+                            <div>
+                                <label class="block font-semibold text-stone-700 mb-1">Table Number / Name</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="text" @bind="tableNumber" @bind:after="UpdateQrCode" placeholder="e.g. Table 1 or Patio-4"
+                                           class="flex-1 px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-cafe-caramel focus:outline-none" />
+                                </div>
+                            </div>
+                        }
+
+                        <!-- Call to action prompt -->
+                        <div>
+                            <label class="block font-semibold text-stone-700 mb-1">Call to Action Heading</label>
+                            <input type="text" @bind="callToAction" placeholder="e.g. Scan to View Menu & Order"
+                                   class="w-full px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-cafe-caramel focus:outline-none" />
+                        </div>
+
+                        <!-- Subtitle instruction -->
+                        <div>
+                            <label class="block font-semibold text-stone-700 mb-1">Instruction Text</label>
+                            <input type="text" @bind="instructionText" placeholder="e.g. Point camera to browse our fresh artisan menu"
+                                   class="w-full px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-cafe-caramel focus:outline-none" />
+                        </div>
+
+                        <!-- Card Theme Override / Matching Branding -->
+                        <div class="pt-2 border-t border-stone-100">
+                            <div class="flex items-center justify-between text-xs text-stone-500">
+                                <span>Using active theme: <strong class="text-stone-800 capitalize">@branding.ThemeTemplate</strong></span>
+                                <a href="/manage/design" class="text-amber-800 font-semibold hover:underline">Change in Design Studio</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Print Instructions Box -->
+                <div class="bg-amber-50/70 border border-amber-200 rounded-3xl p-5 text-xs text-amber-900 space-y-2">
+                    <div class="font-bold flex items-center gap-1.5 text-amber-950">
+                        <span>💡 Printing & Display Tips</span>
+                    </div>
+                    <ul class="list-disc pl-4 space-y-1 text-amber-900/80">
+                        <li>Fits standard <strong>4" x 6" (A6)</strong> or <strong>5" x 7" (A5)</strong> acrylic table stands.</li>
+                        <li>High-contrast vector QR code ensures instant phone camera recognition even in low cafe lighting.</li>
+                        <li>Click <strong>Print QR Card</strong> to print directly on your receipt or cardstock printer.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Right Column: Printable Table Card (Rendered for Screen & Clean Print) -->
+            <div class="lg:col-span-7 flex justify-center">
+                <div class="w-full max-w-[420px] bg-white rounded-3xl shadow-xl border border-stone-200 overflow-hidden print:shadow-none print:border-2 print:border-black print:rounded-2xl transition-all"
+                     style="font-family: @GetCardFontFamily();">
+                    
+                    <!-- Card Header / Brand Bar -->
+                    <div class="p-8 text-center border-b border-stone-100 relative @GetCardHeaderBg()">
+                        <!-- Subtle corner accents -->
+                        <div class="absolute top-3 left-3 text-xs opacity-30">✦</div>
+                        <div class="absolute top-3 right-3 text-xs opacity-30">✦</div>
+
+                        <div class="w-12 h-12 mx-auto rounded-2xl bg-white shadow-md flex items-center justify-center text-xl mb-3 text-stone-900">
+                            ☕
+                        </div>
+
+                        <h2 class="text-2xl font-bold tracking-tight text-stone-900">
+                            @(string.IsNullOrWhiteSpace(branding.BusinessName) ? "RollUp Cafe" : branding.BusinessName)
+                        </h2>
+                        
+                        <p class="text-xs text-stone-600 mt-1 font-medium tracking-wide">
+                            @(string.IsNullOrWhiteSpace(branding.Tagline) ? "Specialty Coffee & Artisan Treats" : branding.Tagline)
+                        </p>
+
+                        @if (tableType == "table" && !string.IsNullOrWhiteSpace(tableNumber))
+                        {
+                            <div class="inline-block mt-4 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-stone-900 text-white shadow-xs">
+                                @tableNumber
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Card Body with QR Code -->
+                    <div class="p-8 text-center space-y-6">
+                        <div class="space-y-1">
+                            <h3 class="text-base font-bold text-stone-800">
+                                @callToAction
+                            </h3>
+                            <p class="text-xs text-stone-500">
+                                @instructionText
+                            </p>
+                        </div>
+
+                        <!-- QR Code Container -->
+                        <div class="flex justify-center my-4">
+                            <div class="p-4 bg-white rounded-2xl border-2 border-stone-200 shadow-sm inline-block">
+                                <div id="qrCodeContainer" class="w-[200px] h-[200px] flex items-center justify-center">
+                                    <!-- Populated via JavaScript rollupTools -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Direct URL preview -->
+                        <div class="text-[11px] text-stone-400 font-mono break-all px-4">
+                            @qrTargetUrl
+                        </div>
+                    </div>
+
+                    <!-- Card Footer: Contact & Address -->
+                    <div class="p-6 bg-stone-50 border-t border-stone-100 text-center space-y-1.5 text-xs text-stone-500">
+                        @if (!string.IsNullOrWhiteSpace(branding.Address))
+                        {
+                            <div class="flex items-center justify-center gap-1.5 font-medium text-stone-700">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <span>@branding.Address</span>
+                            </div>
+                        }
+
+                        <div class="flex items-center justify-center gap-3 text-[11px] text-stone-400">
+                            @if (!string.IsNullOrWhiteSpace(branding.ContactPhone))
+                            {
+                                <span>📞 @branding.ContactPhone</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(branding.ContactEmail))
+                            {
+                                <span>✉️ @branding.ContactEmail</span>
+                            }
+                        </div>
+
+                        <div class="text-[10px] text-stone-300 pt-2 tracking-wider uppercase font-semibold">
+                            Powered by RollUp Digital
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+@code {
+    private TenantBrandingDto branding = new();
+    private string tableType = "table";
+    private string tableNumber = "Table 1";
+    private string callToAction = "Scan to View Menu & Order";
+    private string instructionText = "Point your camera to browse and order from your table";
+    private string qrTargetUrl = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        branding = await BrandingService.GetBrandingAsync();
+        UpdateQrUrl();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await UpdateQrCode();
+        }
+    }
+
+    private void SetTableType(string type)
+    {
+        tableType = type;
+        UpdateQrUrl();
+        _ = UpdateQrCode();
+    }
+
+    private void UpdateQrUrl()
+    {
+        var baseUri = Navigation.BaseUri.TrimEnd('/');
+        if (tableType == "table" && !string.IsNullOrWhiteSpace(tableNumber))
+        {
+            var slug = tableNumber.Trim().Replace(" ", "-");
+            qrTargetUrl = $"{baseUri}/menu/{slug}";
+        }
+        else
+        {
+            qrTargetUrl = $"{baseUri}/menu";
+        }
+    }
+
+    private async Task UpdateQrCode()
+    {
+        UpdateQrUrl();
+        var color = GetQrColorHex();
+        await JSRuntime.InvokeVoidAsync("rollupTools.generateQrSvg", "qrCodeContainer", qrTargetUrl, color, 200);
+    }
+
+    private async Task TriggerPrint()
+    {
+        await JSRuntime.InvokeVoidAsync("rollupTools.triggerPrint");
+    }
+
+    private string GetQrColorHex() => branding.ColorScheme switch
+    {
+        "matcha" => "#1E3A2F",
+        "royal-plum" => "#3B1F2B",
+        "midnight" => "#0F172A",
+        _ => "#3D2314"
+    };
+
+    private string GetCardFontFamily() => branding.FontFamily switch
+    {
+        "playfair" => "'Playfair Display', serif",
+        "poppins" => "'Poppins', sans-serif",
+        "cinzel" => "'Cinzel', serif",
+        _ => "'Inter', sans-serif"
+    };
+
+    private string GetCardHeaderBg() => branding.ColorScheme switch
+    {
+        "matcha" => "bg-emerald-50/70",
+        "royal-plum" => "bg-pink-50/70",
+        "midnight" => "bg-slate-100",
+        _ => "bg-amber-50/60"
+    };
+}

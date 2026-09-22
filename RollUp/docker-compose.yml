@@ -1,0 +1,25 @@
+services:
+  rollup-app:
+    image: rollup-app:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rollup-app
+    restart: unless-stopped
+    ports:
+      - "5088:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - DBOption=MSSQL
+      # Update with your SQL Server connection details
+      # If MSSQL runs on the host machine: use host.docker.internal or host.containers.internal
+      # If MSSQL runs on a remote server: replace with the remote server's IP/hostname
+      - ConnectionStrings__DefaultConnection=Server=.,1433;Database=rollup;User Id=sa;Password=YOUR_MSSQL_PASSWORD;TrustServerCertificate=True;MultipleActiveResultSets=true;
+      - Jwt__Secret=YourSuperSecretKeyWithAtLeast32CharactersLongForSecurity!
+      - Jwt__Issuer=RollUpPlatform
+      - Jwt__Audience=RollUpUsers
+    extra_hosts:
+      # Allows container to reach MSSQL on the host machine
+      - "host.containers.internal:host-gateway"
+      - "host.docker.internal:host-gateway"

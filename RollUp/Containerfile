@@ -1,0 +1,26 @@
+# ==============================================================================
+# Containerfile for Red Hat Enterprise Linux (RHEL) / Podman
+# ==============================================================================
+
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+COPY ["RollUp.csproj", "./"]
+RUN dotnet restore "RollUp.csproj"
+
+COPY . .
+RUN dotnet publish "RollUp.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+WORKDIR /app
+
+ENV ASPNETCORE_ENVIRONMENT=Production \
+    ASPNETCORE_URLS=http://+:8080 \
+    DOTNET_RUNNING_IN_CONTAINER=true \
+    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+
+EXPOSE 8080
+
+COPY --from=build /app/publish .
+
+ENTRYPOINT ["dotnet", "RollUp.dll"]

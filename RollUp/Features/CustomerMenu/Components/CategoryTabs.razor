@@ -1,0 +1,56 @@
+<div class="sticky top-[73px] z-30 backdrop-blur-sm border-b transition-colors @GetContainerClass()">
+    <div class="max-w-lg mx-auto">
+        <div class="flex overflow-x-auto scrollbar-hide gap-2 px-4 py-3">
+            @foreach (var category in Categories)
+            {
+                <button @onclick="() => OnCategorySelected.InvokeAsync(category)"
+                        class="@GetCategoryClass(category)">
+                    @category
+                </button>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<string> Categories { get; set; } = new();
+    [Parameter] public string SelectedCategory { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> OnCategorySelected { get; set; }
+    [Parameter] public string ThemeTemplate { get; set; } = "bistro";
+    [Parameter] public string ColorScheme { get; set; } = "espresso";
+
+    private string GetContainerClass()
+    {
+        if (ThemeTemplate == "dark-velvet") return "bg-slate-950/95 border-white/10";
+        if (ThemeTemplate == "emerald") return "bg-[#0B1D16]/95 border-white/10";
+        if (ThemeTemplate == "minimal") return "bg-white/95 border-stone-200";
+        if (ThemeTemplate == "amber") return "bg-amber-50/95 border-amber-200";
+        if (ThemeTemplate == "artisan") return "bg-[#FBF6EE]/95 border-amber-900/10";
+        return "bg-cafe-cream/95 border-cafe-latte/30";
+    }
+
+    private string GetCategoryClass(string category)
+    {
+        var baseClass = "px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all shadow-2xs ";
+        var isSelected = category == SelectedCategory;
+
+        if (isSelected)
+        {
+            return baseClass + (ColorScheme switch
+            {
+                "matcha" => "bg-emerald-700 text-white",
+                "royal-plum" => "bg-pink-700 text-white",
+                "midnight" => "bg-amber-500 text-slate-950 font-bold",
+                "terracotta" => "bg-orange-700 text-white",
+                _ => "bg-[#3D2314] text-white"
+            });
+        }
+
+        if (ThemeTemplate == "dark-velvet" || ThemeTemplate == "emerald")
+        {
+            return baseClass + "bg-white/10 text-stone-300 hover:bg-white/20";
+        }
+
+        return baseClass + "bg-white/90 text-stone-700 hover:bg-stone-100 border border-stone-200/60";
+    }
+}

@@ -1,0 +1,25 @@
+﻿@page
+@model RollUp.Pages.ErrorModel
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Error</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded-lg shadow-lg max-w-md text-center">
+        <h1 class="text-2xl font-bold text-red-600 mb-4">Error</h1>
+        <p class="text-gray-600 mb-4">An error occurred while processing your request.</p>
+        @if (Model.ShowRequestId)
+        {
+            <p class="text-sm text-gray-500">Request ID: @Model.RequestId</p>
+        }
+        <a href="/" class="inline-block mt-4 px-6 py-2 bg-amber-700 text-white rounded-lg hover:bg-amber-800">
+            Go Home
+        </a>
+    </div>
+</body>
+</html>

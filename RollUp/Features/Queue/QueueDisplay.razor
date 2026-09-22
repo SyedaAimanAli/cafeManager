@@ -1,0 +1,312 @@
+﻿@page "/queue"
+@page "/display"
+@using RollUp.Core.Interfaces
+@using RollUp.Core.Models
+@inject IOrderService OrderService
+@implements IDisposable
+
+<PageTitle>Order Queue - RollUp</PageTitle>
+
+<div class="min-h-screen bg-cafe-espresso text-white overflow-hidden">
+    <!-- Header -->
+    <header class="bg-cafe-mocha/50 border-b border-cafe-mocha">
+        <div class="container mx-auto px-8 py-6 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-cafe-caramel rounded-xl flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2 6h2v12H2V6zm4-2h2v16H6V4zm4 4h2v8h-2V8zm4-2h2v12h-2V6zm4-4h2v16h-2V2z" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="font-display text-3xl font-semibold">RollUp</h1>
+                    <p class="text-cafe-latte text-sm">Order Status Display</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <p class="text-cafe-latte text-sm">Current Time</p>
+                <p class="text-2xl font-semibold tabular-nums">@CurrentTime</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 md:px-8 py-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 md:h-[calc(100vh-180px)]">
+            
+            <!-- Preparing Column -->
+            <div class="flex flex-col">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-4 h-4 bg-amber-500 rounded-full animate-pulse"></div>
+                    <h2 class="text-2xl font-semibold text-cafe-latte">Preparing</h2>
+                    <span class="ml-auto bg-amber-500/20 text-amber-400 px-3 py-1 rounded-full text-sm font-medium">
+                        @PreparingOrders.Count
+                    </span>
+                </div>
+                
+                <div class="flex-1 space-y-4 overflow-y-auto scrollbar-hide">
+                    @if (PreparingOrders.Any())
+                    {
+                        @foreach (var order in PreparingOrders)
+                        {
+                            <div class="bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/30 rounded-2xl p-6 transform transition-all hover:scale-[1.02]">
+                                <div class="flex items-center justify-between mb-4">
+                                    <span class="text-4xl font-bold text-amber-400">@order.OrderNumber</span>
+                                    <span class="px-3 py-1 bg-amber-500/20 text-amber-300 rounded-full text-sm whitespace-nowrap">
+                                        @GetTimeSince(order.CreatedAt)
+                                    </span>
+                                </div>
+                                <div class="space-y-1">
+                                    <p class="text-lg font-medium text-white">@order.CustomerName</p>
+                                    <p class="text-cafe-latte text-sm">
+                                        @order.Items.Count item@(order.Items.Count != 1 ? "s" : "") 
+                                        @if (order.Type == OrderType.TakeAway)
+                                        {
+                                            <span class="ml-2 text-amber-400">Take Away</span>
+                                        }
+                                        else if (!string.IsNullOrEmpty(order.TableNumber))
+                                        {
+                                            <span class="ml-2">Table @order.TableNumber</span>
+                                        }
+                                    </p>
+                                </div>
+                                <div class="mt-4 flex items-center gap-2">
+                                    <div class="flex-1 h-2 bg-amber-900/30 rounded-full overflow-hidden">
+                                        <div class="h-full bg-amber-500 rounded-full animate-progress" style="width: 60%"></div>
+                                    </div>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-500 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="flex flex-col items-center justify-center h-48 text-cafe-latte/50">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <p class="text-lg">No orders preparing</p>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Ready Column -->
+            <div class="flex flex-col">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-4 h-4 bg-emerald-500 rounded-full animate-bounce"></div>
+                    <h2 class="text-2xl font-semibold text-cafe-latte">Ready for Pickup</h2>
+                    <span class="ml-auto bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full text-sm font-medium">
+                        @ReadyOrders.Count
+                    </span>
+                </div>
+                
+                <div class="flex-1 space-y-4 overflow-y-auto scrollbar-hide">
+                    @if (ReadyOrders.Any())
+                    {
+                        @foreach (var order in ReadyOrders.Take(5))
+                        {
+                            <div class="bg-gradient-to-br from-emerald-500/30 to-emerald-600/20 border-2 border-emerald-500/50 rounded-2xl p-6 transform transition-all hover:scale-[1.02] animate-ready-pulse">
+                                <div class="flex items-center justify-between mb-4">
+                                    <span class="text-5xl font-bold text-emerald-400">@order.OrderNumber</span>
+                                    <div class="flex items-center gap-2 text-emerald-400">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 24 24" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clip-rule="evenodd" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div class="space-y-1">
+                                    <p class="text-xl font-semibold text-white">@order.CustomerName</p>
+                                    <p class="text-emerald-300 text-sm font-medium">
+                                        @if (order.Type == OrderType.TakeAway)
+                                        {
+                                            <span>Please collect at counter</span>
+                                        }
+                                        else if (!string.IsNullOrEmpty(order.TableNumber))
+                                        {
+                                            <span>Being served to Table @order.TableNumber</span>
+                                        }
+                                        else
+                                        {
+                                            <span>Please collect at counter</span>
+                                        }
+                                    </p>
+                                </div>
+                                <div class="mt-4 flex items-center gap-2 text-emerald-400">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M5.25 9a6.75 6.75 0 0113.5 0v.75c0 2.123.8 4.057 2.118 5.52a.75.75 0 01-.297 1.206c-1.544.57-3.16.99-4.831 1.243a3.75 3.75 0 11-7.48 0 24.585 24.585 0 01-4.831-1.244.75.75 0 01-.298-1.205A8.217 8.217 0 005.25 9.75V9zm4.502 8.9a2.25 2.25 0 104.496 0 25.057 25.057 0 01-4.496 0z" clip-rule="evenodd" />
+                                    </svg>
+                                    <span class="text-sm font-medium">Ready!</span>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="flex flex-col items-center justify-center h-48 text-cafe-latte/50">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <p class="text-lg">No orders ready</p>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Recent Completed Column -->
+            <div class="flex flex-col">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-4 h-4 bg-cafe-latte rounded-full"></div>
+                    <h2 class="text-2xl font-semibold text-cafe-latte">Recently Served</h2>
+                    <span class="ml-auto bg-cafe-latte/20 text-cafe-latte px-3 py-1 rounded-full text-sm font-medium">
+                        @CompletedOrders.Count
+                    </span>
+                </div>
+                
+                <div class="flex-1 space-y-3 overflow-y-auto scrollbar-hide opacity-60">
+                    @if (CompletedOrders.Any())
+                    {
+                        @foreach (var order in CompletedOrders.Take(5))
+                        {
+                            <div class="bg-cafe-mocha/30 border border-cafe-mocha/50 rounded-xl p-4">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-2xl font-semibold text-cafe-latte">@order.OrderNumber</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-cafe-latte" viewBox="0 0 24 24" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <p class="text-cafe-latte/70 text-sm mt-1">@order.CustomerName - Served</p>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="flex flex-col items-center justify-center h-48 text-cafe-latte/30">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                            </svg>
+                            <p class="text-lg">No completed orders</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer Ticker -->
+    <footer class="fixed bottom-0 left-0 right-0 bg-cafe-mocha/80 backdrop-blur-sm border-t border-cafe-mocha py-4 z-50">
+        <div class="container mx-auto px-4 md:px-8">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 text-cafe-latte">
+                <div class="flex flex-wrap items-center gap-4 md:gap-6">
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 bg-amber-500 rounded-full"></div>
+                        <span>Preparing: @PreparingOrders.Count</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 bg-emerald-500 rounded-full"></div>
+                        <span>Ready: @ReadyOrders.Count</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 bg-cafe-latte rounded-full"></div>
+                        <span>Served Today: @CompletedOrders.Count</span>
+                    </div>
+                </div>
+                <p class="text-sm">Thank you for your patience. Your order is being prepared with care.</p>
+            </div>
+        </div>
+    </footer>
+</div>
+
+<style>
+    @@keyframes ready-pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+        50% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); }
+    }
+    .animate-ready-pulse {
+        animation: ready-pulse 2s infinite;
+    }
+    @@keyframes progress {
+        0% { width: 0%; }
+        100% { width: 60%; }
+    }
+    .animate-progress {
+        animation: progress 3s ease-in-out infinite alternate;
+    }
+</style>
+
+@code {
+    private List<Order> PreparingOrders = new();
+    private List<Order> ReadyOrders = new();
+    private List<Order> CompletedOrders = new();
+    private string CurrentTime = string.Empty;
+    private System.Threading.Timer? _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrders();
+        UpdateTime();
+        
+        _timer = new System.Threading.Timer(_ =>
+        {
+            _ = InvokeAsync(() =>
+            {
+                try
+                {
+                    UpdateTime();
+                    StateHasChanged();
+                }
+                catch { /* Ignore background timer errors */ }
+            });
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+
+        OrderService.OnOrdersChanged += OnOrdersChanged;
+    }
+
+    private async Task LoadOrders()
+    {
+        PreparingOrders = await OrderService.GetOrdersByStatusAsync(OrderStatus.Preparing);
+        
+        ReadyOrders = (await OrderService.GetOrdersByStatusAsync(OrderStatus.Ready))
+            .OrderByDescending(o => o.UpdatedAt)
+            .ToList();
+            
+        CompletedOrders = (await OrderService.GetOrdersByStatusAsync(OrderStatus.Completed))
+            .OrderByDescending(o => o.UpdatedAt)
+            .ToList();
+    }
+
+    private async void OnOrdersChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            try
+            {
+                await LoadOrders();
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in OnOrdersChanged: {ex.Message}");
+            }
+        });
+    }
+
+    private void UpdateTime()
+    {
+        CurrentTime = DateTime.Now.ToString("HH:mm:ss");
+    }
+
+    private string GetTimeSince(DateTime time)
+    {
+        var diff = DateTime.UtcNow - time;
+        if (diff.TotalMinutes < 1) return "Just now";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes} min";
+        return $"{(int)diff.TotalHours}h {diff.Minutes}m";
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+        OrderService.OnOrdersChanged -= OnOrdersChanged;
+    }
+}

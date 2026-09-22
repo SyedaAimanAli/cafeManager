@@ -1,0 +1,235 @@
+@page "/manage/printable-menu"
+@using RollUp.Core.Interfaces
+@using RollUp.Core.Models
+@using RollUp.Application.DTOs
+@inject IMenuService MenuService
+@inject IBrandingService BrandingService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+
+<PageTitle>Printable Menu Booklet - RollUp</PageTitle>
+
+<div class="min-h-screen bg-stone-100 pb-20 print:bg-white print:pb-0">
+    <AdminNavbar />
+
+    <!-- Action Bar (Hidden on Print) -->
+    <div class="bg-white border-b border-stone-200 no-print sticky top-16 z-30 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 md:px-6 py-4">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h1 class="text-xl font-bold text-cafe-espresso">Printable Menu Booklet</h1>
+                    <p class="text-xs text-stone-500">Physically printed dine-in booklet formatted for A4 & Letter paper</p>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button @onclick="TriggerPrint"
+                            class="px-5 py-2.5 bg-cafe-espresso text-white text-sm font-semibold rounded-xl hover:bg-cafe-mocha transition-all shadow-sm flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                        <span>Print Menu Booklet</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="max-w-5xl mx-auto px-4 py-8 print:p-0 print:m-0 print:max-w-none">
+        
+        <!-- Physical Booklet Sheet Preview -->
+        <div class="rounded-3xl shadow-xl p-8 md:p-12 print:shadow-none print:p-8 print:rounded-none print:border-none border min-h-[1000px] transition-all @GetSheetClass()"
+             style="font-family: @GetMenuFontFamily();">
+            
+            <!-- Booklet Header / Crest -->
+            <div class="text-center pb-8 mb-8 border-b-2 @GetDividerBorderClass() relative">
+                <!-- Decorative Top Ornaments -->
+                <div class="text-stone-400 text-sm tracking-widest mb-2 font-mono">✦ ✦ ✦</div>
+
+                <div class="w-12 h-12 mx-auto rounded-full text-white flex items-center justify-center text-xl mb-3 shadow-sm @GetCrestBgClass()">
+                    ☕
+                </div>
+
+                <h1 class="text-3xl md:text-4xl font-bold tracking-tight text-stone-900 uppercase">
+                    @(string.IsNullOrWhiteSpace(branding.BusinessName) ? "RollUp Cafe & Roastery" : branding.BusinessName)
+                </h1>
+
+                <p class="text-sm text-stone-600 mt-2 font-medium tracking-wide italic">
+                    @(string.IsNullOrWhiteSpace(branding.Tagline) ? "Artisan Coffee • Fresh Pastries • Daily Kitchen" : branding.Tagline)
+                </p>
+
+                <!-- Location details under header -->
+                @if (!string.IsNullOrWhiteSpace(branding.Address) || !string.IsNullOrWhiteSpace(branding.ContactPhone))
+                {
+                    <div class="flex items-center justify-center gap-4 text-xs text-stone-500 mt-3 font-sans">
+                        @if (!string.IsNullOrWhiteSpace(branding.Address))
+                        {
+                            <span>📍 @branding.Address</span>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(branding.ContactPhone))
+                        {
+                            <span>📞 @branding.ContactPhone</span>
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- 2-Column Menu Sections Grid -->
+            @if (isLoading)
+            {
+                <div class="py-20 text-center text-stone-400 no-print">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-2 border-amber-800 border-t-transparent mb-2"></div>
+                    <p class="text-sm">Generating menu layout...</p>
+                </div>
+            }
+            else
+            {
+                <div class="grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-x-12 gap-y-10">
+                    @foreach (var categoryGroup in CategorizedItems)
+                    {
+                        <div class="space-y-4">
+                            <!-- Category Header -->
+                            <div class="border-b @GetCategoryBorderClass() pb-1.5 flex items-center justify-between">
+                                <h2 class="text-base font-bold uppercase tracking-wider text-stone-900">
+                                    @categoryGroup.Key
+                                </h2>
+                                <span class="text-xs text-stone-400 font-serif italic">Fresh Selection</span>
+                            </div>
+
+                            <!-- Items List -->
+                            <div class="space-y-3.5">
+                                @foreach (var item in categoryGroup.Value)
+                                {
+                                    <div class="space-y-0.5">
+                                        <div class="flex items-baseline justify-between gap-2">
+                                            <div class="font-bold text-sm text-stone-900 flex items-center gap-2">
+                                                <span>@item.Name</span>
+                                                @if (item.IsPopular)
+                                                {
+                                                    <span class="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded font-bold bg-amber-100 text-amber-900 print:border print:border-stone-400">
+                                                        Popular
+                                                    </span>
+                                                }
+                                            </div>
+                                            <!-- Dotted connector -->
+                                            <div class="flex-1 border-b border-dotted border-stone-300 mx-1 relative top-[-3px]"></div>
+                                            <!-- Price -->
+                                            <div class="font-bold text-sm text-stone-900 shrink-0">
+                                                @branding.Currency @item.Price.ToString("F2")
+                                            </div>
+                                        </div>
+
+                                        @if (!string.IsNullOrWhiteSpace(item.Description))
+                                        {
+                                            <p class="text-xs text-stone-500 font-sans leading-relaxed">
+                                                @item.Description
+                                            </p>
+                                        }
+
+                                        @if (item.Tags != null && item.Tags.Any())
+                                        {
+                                            <div class="flex flex-wrap gap-1 text-[10px] text-stone-400 font-sans">
+                                                @foreach (var tag in item.Tags)
+                                                {
+                                                    <span>• @tag</span>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+            <!-- Booklet Footer / Notes -->
+            <div class="mt-12 pt-8 border-t-2 @GetDividerBorderClass() flex flex-col md:flex-row print:flex-row items-center justify-between gap-6 text-xs text-stone-500 font-sans">
+                <div class="space-y-1 text-center md:text-left print:text-left">
+                    <p class="font-semibold text-stone-700">Allergen Notice & Dietary Requirements</p>
+                    <p class="text-[11px] text-stone-400">Please inform our staff regarding any food allergies or dietary preferences before placing your order.</p>
+                </div>
+
+                <div class="text-center md:text-right print:text-right shrink-0">
+                    <div class="font-bold text-stone-800">Scan QR Code at Table</div>
+                    <div class="text-[11px] text-stone-400">For digital ordering & live queue tracking</div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+@code {
+    private TenantBrandingDto branding = new();
+    private List<MenuItem> allItems = new();
+    private Dictionary<string, List<MenuItem>> CategorizedItems = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        branding = await BrandingService.GetBrandingAsync();
+        try
+        {
+            allItems = await MenuService.GetAllItemsAsync();
+            
+            CategorizedItems = allItems
+                .GroupBy(i => string.IsNullOrWhiteSpace(i.Category) ? "Main Menu" : i.Category)
+                .ToDictionary(g => g.Key, g => g.ToList());
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task TriggerPrint()
+    {
+        await JSRuntime.InvokeVoidAsync("rollupTools.triggerPrint");
+    }
+
+    private string GetMenuFontFamily() => branding.FontFamily switch
+    {
+        "playfair" => "'Playfair Display', Georgia, serif",
+        "poppins" => "'Poppins', sans-serif",
+        "cinzel" => "'Cinzel', Georgia, serif",
+        "cormorant" => "'Cormorant Garamond', Georgia, serif",
+        "montserrat" => "'Montserrat', sans-serif",
+        _ => "'Inter', sans-serif"
+    };
+
+    private string GetDividerBorderClass() => branding.ColorScheme switch
+    {
+        "matcha" => "border-emerald-800",
+        "royal-plum" => "border-pink-900",
+        "midnight" => "border-slate-900",
+        "terracotta" => "border-orange-800",
+        _ => "border-amber-900/80"
+    };
+
+    private string GetCategoryBorderClass() => branding.ColorScheme switch
+    {
+        "matcha" => "border-emerald-700/50",
+        "royal-plum" => "border-pink-700/50",
+        "midnight" => "border-slate-700/50",
+        "terracotta" => "border-orange-700/50",
+        _ => "border-amber-800/40"
+    };
+
+    private string GetSheetClass() => branding.ThemeTemplate switch
+    {
+        "emerald" => "bg-[#FAFDFB] border-emerald-900/30 shadow-emerald-950/10",
+        "dark-velvet" => "bg-[#FDFBFC] border-purple-950/30 shadow-purple-950/10",
+        "artisan" => "bg-[#FDFBF7] border-amber-900/30 shadow-amber-950/10",
+        "amber" => "bg-[#FFFDF7] border-amber-800/30 shadow-amber-950/10",
+        "minimal" => "bg-white border-stone-300 shadow-stone-900/5",
+        _ => "bg-white border-stone-200"
+    };
+
+    private string GetCrestBgClass() => branding.ThemeTemplate switch
+    {
+        "emerald" => "bg-emerald-900",
+        "dark-velvet" => "bg-slate-900",
+        "amber" => "bg-amber-900",
+        _ => "bg-stone-900"
+    };
+}
