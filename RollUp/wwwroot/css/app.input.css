@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── CSS Custom Property defaults (Dark by default throughout) ── */
+:root {
+  --color-accent: #10b981;
+  --color-accent-ink: #ffffff;
+  --color-accent-muted: rgba(16, 185, 129, 0.20);
+  --color-surface: #0e0e11;
+  --color-bg: #000000;
+  --color-ink: #fafaf9;
+  --color-ink-muted: #a1a1aa;
+  --color-ink-faint: #71717a;
+  --color-line: #1c1c20;
+  --color-ok: #10b981;
+  --color-ok-bg: rgba(16, 185, 129, 0.15);
+  --color-ok-text: #34d399;
+  --color-warn: #f59e0b;
+  --color-warn-bg: rgba(245, 158, 11, 0.15);
+  --color-warn-text: #fbbf24;
+  --color-bad: #ef4444;
+  --color-bad-bg: rgba(239, 68, 68, 0.15);
+  --color-bad-text: #f87171;
+}
+
+[data-theme="dark"] {
+  --color-surface: #0e0e11;
+  --color-bg: #000000;
+  --color-ink: #fafaf9;
+  --color-ink-muted: #a1a1aa;
+  --color-ink-faint: #71717a;
+  --color-line: #1c1c20;
+}
+
+/* ─── Utility: scrollbar hide ─────────────────────────────────── */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ─── Print helpers ────────────────────────────────────────────── */
+@media print {
+  .no-print { display: none !important; }
+}
+
+/* ─── Slide-up animation for bottom sheet ──────────────────────── */
+@keyframes slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.animate-slide-up { animation: slide-up 0.28s cubic-bezier(0.32, 0.72, 0, 1); }
+
+/* ─── Bounce-in for toast ─────────────────────────────────────── */
+@keyframes bounce-in {
+  0%   { transform: scale(0.3); opacity: 0; }
+  50%  { transform: scale(1.05); opacity: 1; }
+  70%  { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+.animate-bounce-in { animation: bounce-in 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); }

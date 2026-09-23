@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
+using RollUp.Core.Enums;
 
 namespace RollUp.Application.DTOs;
 
@@ -38,6 +39,13 @@ public class TenantOnboardingRequestDto
     [Required(ErrorMessage = "Password is required")]
     [MinLength(6, ErrorMessage = "Password must be at least 6 characters")]
     public string AdminPassword { get; set; } = string.Empty;
+
+    // Branding & Setup (wizard steps 3-4)
+    public string? HeadingFont { get; set; }
+    public string? AccentColor { get; set; }       // hex string e.g. "#FF5A1F"
+    public string? SelectedTemplate { get; set; }  // "bistro" | "minimal" | "artisan"
+    public string? AcceptedPaymentMethods { get; set; }
+    public OutletType OutletType { get; set; } = OutletType.Cafe;
 }
 
 public class TenantDto

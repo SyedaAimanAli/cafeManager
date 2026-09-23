@@ -1,0 +1,59 @@
+@* RollUpBottomSheet — Mobile: slide-up sheet. Desktop (md+): centered modal overlay. *@
+@if (IsOpen)
+{
+    <div class="fixed inset-0 z-50 flex items-end md:items-center justify-center">
+        @* Backdrop *@
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-xs" @onclick="HandleClose"></div>
+
+        @* Sheet / Modal panel *@
+        <div class="relative w-full @MaxWidthClass md:rounded-card rounded-t-card bg-surface shadow-modal animate-slide-up md:animate-none flex flex-col @MaxHeightClass">
+            @* Header *@
+            @if (!string.IsNullOrEmpty(Title) || ShowCloseButton)
+            {
+                <div class="flex items-center justify-between px-5 py-4 border-b border-line shrink-0">
+                    @if (!string.IsNullOrEmpty(Title))
+                    {
+                        <h2 class="font-display font-semibold text-ink text-base">@Title</h2>
+                    }
+                    @if (ShowCloseButton)
+                    {
+                        <button @onclick="HandleClose" class="p-1.5 rounded-lg text-ink-faint hover:text-ink hover:bg-bg transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    }
+                </div>
+            }
+
+            @* Body — scrollable *@
+            <div class="flex-1 overflow-y-auto overscroll-contain p-5">
+                @ChildContent
+            </div>
+
+            @* Footer *@
+            @if (Footer != null)
+            {
+                <div class="shrink-0 px-5 py-4 border-t border-line">
+                    @Footer
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public bool ShowCloseButton { get; set; } = true;
+    [Parameter] public string MaxWidthClass { get; set; } = "md:max-w-lg";
+    [Parameter] public string MaxHeightClass { get; set; } = "max-h-[90vh]";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Footer { get; set; }
+
+    private async Task HandleClose()
+    {
+        await IsOpenChanged.InvokeAsync(false);
+    }
+}

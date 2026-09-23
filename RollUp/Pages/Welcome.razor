@@ -1,0 +1,117 @@
+@page "/welcome"
+@layout EmptyLayout
+@inject CustomAuthStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+
+<PageTitle>Welcome to RollUp — Cafe Management Platform</PageTitle>
+
+<div class="min-h-screen flex flex-col bg-black text-ink overflow-hidden relative">
+
+    <!-- Gradient blob decoration (Vibrant Orange Ambient Glow) -->
+    <div class="pointer-events-none absolute inset-0 overflow-hidden">
+        <div class="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-accent opacity-20 blur-3xl"></div>
+        <div class="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-accent opacity-15 blur-3xl"></div>
+    </div>
+
+    <!-- Top Nav -->
+    <nav class="relative z-10 flex items-center justify-between px-6 py-5 max-w-6xl mx-auto w-full">
+        <!-- Logo -->
+        <div class="flex items-center gap-2.5">
+            <span class="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                     class="w-4 h-4 text-accent-ink">
+                    <path fill-rule="evenodd"
+                          d="M3.5 2A1.5 1.5 0 002 3.5v13A1.5 1.5 0 003.5 18h13a1.5 1.5 0 001.5-1.5V3.5A1.5 1.5 0 0016.5 2h-13zm3.75 8.25a.75.75 0 000 1.5h5.5a.75.75 0 000-1.5h-5.5zm0-3a.75.75 0 000 1.5h5.5a.75.75 0 000-1.5h-5.5z"
+                          clip-rule="evenodd" />
+                </svg>
+            </span>
+            <span class="font-display font-bold text-white text-lg tracking-tight">RollUp</span>
+        </div>
+
+        <a href="/login"
+           class="text-sm font-medium text-white/60 hover:text-white transition-colors">
+            Sign in
+        </a>
+    </nav>
+
+    <!-- Hero Section -->
+    <main class="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-16 text-center max-w-3xl mx-auto w-full">
+
+        <!-- Badge -->
+        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/20 border border-accent/30 text-accent text-xs font-semibold mb-8 tracking-wider uppercase">
+            <span class="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>
+            Multi-tenant · Real-time · Zero friction
+        </div>
+
+        <!-- Headline -->
+        <h1 class="font-display text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-[1.05] tracking-tight mb-6">
+            Run your café
+            <br />
+            <span class="text-accent">like a pro</span>
+        </h1>
+
+        <!-- Sub-headline -->
+        <p class="text-white/60 text-lg sm:text-xl font-body leading-relaxed max-w-xl mb-12">
+            Queue management, live menu, branded QR codes, and deep insights — all in one beautiful dashboard.
+        </p>
+
+        <!-- CTA Buttons -->
+        <div class="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+            <a id="btn-register"
+               href="/register"
+               class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-accent text-accent-ink font-bold rounded-pill shadow-elevated hover:opacity-90 active:scale-[0.98] transition-all text-base">
+                Register my café
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                     stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                </svg>
+            </a>
+            <a id="btn-login"
+               href="/login"
+               class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 bg-surface hover:bg-line/40 border border-line text-ink font-semibold rounded-pill active:scale-[0.98] transition-all text-base shadow-sm">
+                I already have an account
+            </a>
+        </div>
+
+        <!-- Feature Pills -->
+        <div class="mt-16 flex flex-wrap items-center justify-center gap-3">
+            @foreach (var feat in _features)
+            {
+                <span class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-pill bg-surface border border-line text-ink-muted text-xs font-body shadow-2xs">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                         class="w-3.5 h-3.5 text-accent">
+                        <path fill-rule="evenodd"
+                              d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                              clip-rule="evenodd" />
+                    </svg>
+                    @feat
+                </span>
+            }
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="relative z-10 text-center py-6 text-ink-faint text-xs font-body">
+        &copy; @DateTime.UtcNow.Year RollUp — Cafe Management Platform
+    </footer>
+</div>
+
+@code {
+    private readonly string[] _features = new[]
+    {
+        "Real-time queue", "Live menu builder", "Branded QR codes",
+        "Design Studio", "Sales insights", "Multi-outlet support"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        // If already logged in, go straight to queue
+        try
+        {
+            var state = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (state.User.Identity?.IsAuthenticated == true)
+                Navigation.NavigateTo("/queue", replace: true);
+        }
+        catch { }
+    }
+}

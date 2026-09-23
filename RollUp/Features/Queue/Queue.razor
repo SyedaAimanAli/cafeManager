@@ -1,0 +1,319 @@
+@page "/queue"
+@page "/admin/queue"
+@page "/kitchen"
+@attribute [Authorize]
+
+@using RollUp.Core.Enums
+@using RollUp.Core.Interfaces
+@using RollUp.Core.Models
+@using RollUp.Features.Queue.Components
+@inject IOrderService OrderService
+@inject IMenuService MenuService
+@inject IOutletService OutletService
+@inject IOrderNotificationService NotificationService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<PageTitle>Queue — RollUp</PageTitle>
+
+<div class="p-4 md:p-8 space-y-6">
+    <!-- Header with Dynamic Headline & Open/Closed Status -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-line">
+        <div>
+            <div class="flex flex-wrap items-center gap-2.5">
+                <h1 class="text-2xl md:text-3xl font-display font-bold text-ink">
+                    @GetHeadline()
+                </h1>
+                @if (OutletService.ActiveOutlet != null)
+                {
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-pill bg-accent/15 text-accent text-xs font-bold border border-accent/25">
+                        <span>📍</span>
+                        <span>@OutletService.ActiveOutlet.Name</span>
+                    </span>
+                }
+                @if (isOpen)
+                {
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-pill bg-ok/15 text-ok text-xs font-semibold">
+                        <span class="w-2 h-2 rounded-full bg-ok animate-ping"></span>
+                        Store Open
+                    </span>
+                }
+                else
+                {
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-pill bg-bad/15 text-bad text-xs font-semibold">
+                        <span class="w-2 h-2 rounded-full bg-bad"></span>
+                        Closed
+                    </span>
+                }
+            </div>
+            <p class="text-xs md:text-sm text-ink-muted mt-1">
+                Live kitchen orders & customer pickup workflow
+            </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+            <!-- Quick Demo Order Button -->
+            <button type="button" @onclick="CreateQuickDemoOrder"
+                    class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-surface border border-line text-ink hover:border-accent hover:text-accent transition-all flex items-center gap-1.5 shadow-2xs group"
+                    title="Generate a demo order instantly to test the queue">
+                <span class="text-accent group-hover:scale-110 transition-transform">⚡</span>
+                <span>Demo Order</span>
+            </button>
+
+            <!-- Customer App Link -->
+            <a href="/order" target="_blank"
+               class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-surface border border-line text-ink hover:border-accent hover:text-accent transition-all flex items-center gap-1.5 shadow-2xs"
+               title="Open the customer menu in a new tab to place an order manually">
+                <span>Customer View</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+            </a>
+
+            <!-- Clock -->
+            <div class="text-right pl-2 hidden sm:block">
+                <div class="text-[10px] uppercase font-semibold text-ink-faint tracking-wider">Live Time</div>
+                <div class="text-base font-mono font-bold text-ink">@CurrentTime</div>
+            </div>
+
+            <!-- Open/Close Switch -->
+            <div class="flex items-center gap-2 pl-3 border-l border-line">
+                <span class="text-xs text-ink-muted font-medium">Accept Orders</span>
+                <RollUpToggleSwitch Checked="@isOpen" CheckedChanged="@(val => isOpen = val)" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Segmented Control (Tabs) -->
+    <div class="flex lg:hidden bg-surface p-1 rounded-2xl border border-line">
+        <button type="button" @onclick="() => mobileTab = 0"
+                class="flex-1 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 @(mobileTab == 0 ? "bg-accent text-accent-ink shadow-sm" : "text-ink-muted hover:text-ink")">
+            <span>New</span>
+            <span class="px-1.5 py-0.5 rounded-full text-[10px] @(mobileTab == 0 ? "bg-white/20 text-accent-ink" : "bg-line text-ink")">@PendingOrders.Count</span>
+        </button>
+        <button type="button" @onclick="() => mobileTab = 1"
+                class="flex-1 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 @(mobileTab == 1 ? "bg-accent text-accent-ink shadow-sm" : "text-ink-muted hover:text-ink")">
+            <span>Preparing</span>
+            <span class="px-1.5 py-0.5 rounded-full text-[10px] @(mobileTab == 1 ? "bg-white/20 text-accent-ink" : "bg-line text-ink")">@PreparingOrders.Count</span>
+        </button>
+        <button type="button" @onclick="() => mobileTab = 2"
+                class="flex-1 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 @(mobileTab == 2 ? "bg-accent text-accent-ink shadow-sm" : "text-ink-muted hover:text-ink")">
+            <span>Ready</span>
+            <span class="px-1.5 py-0.5 rounded-full text-[10px] @(mobileTab == 2 ? "bg-white/20 text-accent-ink" : "bg-line text-ink")">@ReadyOrders.Count</span>
+        </button>
+    </div>
+
+    <!-- Kanban Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- New Orders Column -->
+        <div class="@(mobileTab == 0 ? "block" : "hidden lg:block")">
+            <QueueColumn Title="New Orders"
+                         ColumnType="OrderStatus.Pending"
+                         Orders="PendingOrders"
+                         DotColorClass="bg-blue-500"
+                         BadgeColorClass="bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                         EmptyMessage="No new orders waiting"
+                         OnStatusChange="@(async s => await MoveToStatus(s.Order.Id, s.Status))"
+                         OnCancel="CancelOrder">
+                <EmptyIconPath>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </EmptyIconPath>
+            </QueueColumn>
+        </div>
+
+        <!-- Preparing Column -->
+        <div class="@(mobileTab == 1 ? "block" : "hidden lg:block")">
+            <QueueColumn Title="Preparing / Cooking"
+                         ColumnType="OrderStatus.Preparing"
+                         Orders="PreparingOrders"
+                         DotColorClass="bg-amber-500"
+                         DotAnimationClass="animate-pulse"
+                         BadgeColorClass="bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                         EmptyMessage="Kitchen idle — nothing cooking"
+                         OnStatusChange="@(async s => await MoveToStatus(s.Order.Id, s.Status))">
+                <EmptyIconPath>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </EmptyIconPath>
+            </QueueColumn>
+        </div>
+
+        <!-- Ready for Pickup Column -->
+        <div class="@(mobileTab == 2 ? "block" : "hidden lg:block")">
+            <QueueColumn Title="Ready for Pickup"
+                         ColumnType="OrderStatus.Ready"
+                         Orders="ReadyOrders"
+                         DotColorClass="bg-emerald-500"
+                         BadgeColorClass="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                         EmptyMessage="No orders waiting for pickup"
+                         OnStatusChange="@(async s => await MoveToStatus(s.Order.Id, s.Status))">
+                <EmptyIconPath>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </EmptyIconPath>
+            </QueueColumn>
+        </div>
+    </div>
+</div>
+
+<!-- New Order Notification Toast -->
+@if (ShowNewOrderToast)
+{
+    <div class="fixed bottom-20 md:bottom-8 right-6 z-50 animate-bounce-in">
+        <div class="p-4 rounded-2xl shadow-2xl border-2 flex items-center gap-3.5 min-w-[320px] max-w-md"
+             style="background-color: var(--color-surface, #18181b); color: var(--color-ink, #fafaf9); border-color: var(--color-accent, #C4956A); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);">
+            <div class="w-11 h-11 rounded-xl flex items-center justify-center font-bold flex-shrink-0 shadow-md"
+                 style="background-color: var(--color-accent, #C4956A); color: var(--color-accent-ink, #ffffff);">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                    <h3 class="font-display font-bold text-sm truncate" style="color: var(--color-ink, #fafaf9);">New Order Placed!</h3>
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold"
+                          style="background-color: rgba(16, 185, 129, 0.2); color: #34d399;">LIVE</span>
+                </div>
+                <p class="text-xs truncate mt-0.5" style="color: var(--color-ink-muted, #a1a1aa);">Check the "New Orders" column</p>
+            </div>
+            <button type="button" @onclick="() => ShowNewOrderToast = false"
+                    class="p-1 rounded-lg transition-colors text-lg font-bold leading-none cursor-pointer"
+                    style="color: var(--color-ink-muted, #a1a1aa);"
+                    title="Dismiss">
+                &times;
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Order> PendingOrders = new();
+    private List<Order> PreparingOrders = new();
+    private List<Order> ReadyOrders = new();
+    private string CurrentTime = string.Empty;
+    private System.Threading.Timer? _timer;
+    private bool isOpen = true;
+    private int mobileTab = 0;
+    private bool ShowNewOrderToast = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        OutletService.OnActiveOutletChanged += HandleBranchChanged;
+        await OutletService.InitializeActiveOutletAsync();
+        await LoadOrders();
+        UpdateTime();
+
+        _timer = new System.Threading.Timer(_ =>
+        {
+            _ = InvokeAsync(() =>
+            {
+                try
+                {
+                    UpdateTime();
+                    StateHasChanged();
+                }
+                catch { }
+            });
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+
+        NotificationService.OnOrdersChanged += OnOrdersChanged;
+    }
+
+    private string GetHeadline()
+    {
+        if (!isOpen) return "Store is Closed";
+        var totalActive = PendingOrders.Count + PreparingOrders.Count;
+        if (totalActive == 0) return "All caught up";
+        if (PendingOrders.Count == 1) return "1 order waiting";
+        return $"{PendingOrders.Count} orders waiting";
+    }
+
+    private async Task LoadOrders()
+    {
+        var outletId = OutletService.ActiveOutletId;
+        PendingOrders = await OrderService.GetOrdersByStatusAsync(OrderStatus.Pending, outletId);
+        PreparingOrders = await OrderService.GetOrdersByStatusAsync(OrderStatus.Preparing, outletId);
+        ReadyOrders = await OrderService.GetOrdersByStatusAsync(OrderStatus.Ready, outletId);
+    }
+
+    private async void HandleBranchChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            await LoadOrders();
+            StateHasChanged();
+        });
+    }
+
+    private async void OnOrdersChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            try
+            {
+                var oldPendingCount = PendingOrders.Count;
+                await LoadOrders();
+
+                if (PendingOrders.Count > oldPendingCount)
+                {
+                    ShowNewOrderToast = true;
+                    try { await JSRuntime.InvokeVoidAsync("playNotificationSound"); } catch { }
+                    StateHasChanged();
+
+                    await Task.Delay(5000);
+                    ShowNewOrderToast = false;
+                }
+                StateHasChanged();
+            }
+            catch { }
+        });
+    }
+
+    private void UpdateTime()
+    {
+        CurrentTime = DateTime.Now.ToString("HH:mm:ss");
+    }
+
+    private async Task MoveToStatus(int orderId, OrderStatus newStatus)
+    {
+        await OrderService.UpdateOrderStatusAsync(orderId, newStatus);
+    }
+
+    private async Task CancelOrder(int orderId)
+    {
+        await OrderService.CancelOrderAsync(orderId);
+    }
+
+    private async Task CreateQuickDemoOrder()
+    {
+        try
+        {
+            var items = await MenuService.GetAllItemsAsync();
+            var availableItems = items.Where(i => i.IsAvailable).ToList();
+            if (!availableItems.Any()) availableItems = items;
+            if (!availableItems.Any()) return;
+
+            var chosenItems = availableItems.OrderBy(_ => Guid.NewGuid()).Take(2).ToList();
+            var randomNames = new[] { "Alex M.", "Sophia L.", "Jordan K.", "Emma W.", "Liam R.", "David H.", "Maya C." };
+            var customer = randomNames[Random.Shared.Next(randomNames.Length)];
+            var table = Random.Shared.Next(1, 15).ToString();
+
+            var cart = chosenItems.Select(item => new CartItem
+            {
+                MenuItem = item,
+                Quantity = Random.Shared.Next(1, 3),
+                SelectedVariant = item.Variants.FirstOrDefault()?.Name ?? string.Empty
+            }).ToList();
+
+            await OrderService.CreateOrderAsync(customer, cart, table, OrderType.DineIn, OutletService.ActiveOutletId);
+            await LoadOrders();
+        }
+        catch { }
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+        NotificationService.OnOrdersChanged -= OnOrdersChanged;
+        OutletService.OnActiveOutletChanged -= HandleBranchChanged;
+    }
+}

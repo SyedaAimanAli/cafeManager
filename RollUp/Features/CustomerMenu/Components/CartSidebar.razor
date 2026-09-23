@@ -1,14 +1,22 @@
-﻿@using RollUp.Core.Models
+@using RollUp.Core.Models
 
 @if (ShowCart)
 {
     <div class="fixed inset-0 z-50">
-        <div class="absolute inset-0 bg-black/50" @onclick="() => ShowCartChanged.InvokeAsync(false)"></div>
-        <div class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl flex flex-col">
-            <div class="p-6 border-b border-gray-100 flex items-center justify-between">
-                <h2 class="font-display text-xl font-semibold text-cafe-espresso">Your Order</h2>
-                <button @onclick="() => ShowCartChanged.InvokeAsync(false)" class="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-xs transition-opacity animate-fade-in" @onclick="() => ShowCartChanged.InvokeAsync(false)"></div>
+        <div class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-surface border-l border-line text-ink shadow-2xl flex flex-col animate-slide-in-right">
+            <!-- Header -->
+            <div class="p-5 border-b border-line flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-xl flex items-center justify-center" style="background-color: @AccentColor; color: @AccentInk;">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                        </svg>
+                    </div>
+                    <h2 class="font-display text-lg font-bold text-ink">Your Order</h2>
+                </div>
+                <button type="button" @onclick="() => ShowCartChanged.InvokeAsync(false)" class="p-2 text-ink-muted hover:text-ink hover:bg-line/50 rounded-full transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
@@ -17,93 +25,103 @@
             @if (Cart.Count == 0)
             {
                 <div class="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    <p class="text-gray-500 mb-2">Your cart is empty</p>
-                    <p class="text-sm text-gray-400">Add some items to get started</p>
+                    <div class="w-16 h-16 rounded-full bg-line/40 flex items-center justify-center mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-ink-faint" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                    </div>
+                    <p class="font-display font-semibold text-ink mb-1">Your cart is empty</p>
+                    <p class="text-xs text-ink-muted">Add some delicious items from the menu to begin</p>
                 </div>
             }
             else
             {
-                <div class="flex-1 overflow-y-auto p-6 space-y-4">
+                <div class="flex-1 overflow-y-auto p-5 space-y-3">
                     @foreach (var item in Cart)
                     {
-                        <div class="bg-gray-50 rounded-xl p-4">
-                            <div class="flex justify-between items-start mb-2">
-                                <div class="flex-1">
-                                    <h3 class="font-medium text-cafe-espresso">@item.MenuItem.Name</h3>
+                        <div class="bg-bg/70 border border-line rounded-2xl p-4 flex flex-col gap-3">
+                            <div class="flex justify-between items-start gap-2">
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="font-display font-bold text-ink text-sm truncate">@item.MenuItem.Name</h3>
                                     @if (!string.IsNullOrEmpty(item.SelectedVariant))
                                     {
-                                        <p class="text-sm text-cafe-mocha">@item.SelectedVariant</p>
+                                        <p class="text-xs font-semibold" style="color: @AccentColor;">@item.SelectedVariant</p>
                                     }
                                     @if (item.SelectedAddons.Any())
                                     {
-                                        <p class="text-xs text-gray-500">+ @string.Join(", ", item.SelectedAddons)</p>
+                                        <p class="text-[11px] text-ink-muted mt-0.5">+ @string.Join(", ", item.SelectedAddons)</p>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(item.SpecialInstructions))
+                                    {
+                                        <p class="text-[11px] text-ink-faint italic mt-0.5">“@item.SpecialInstructions”</p>
                                     }
                                 </div>
-                                <button @onclick="() => OnRemoveFromCart.InvokeAsync(item)" class="p-1 hover:bg-gray-200 rounded transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <button type="button" @onclick="() => OnRemoveFromCart.InvokeAsync(item)" class="p-1.5 text-ink-muted hover:text-bad hover:bg-bad/10 rounded-lg transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                     </svg>
                                 </button>
                             </div>
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-3">
-                                    <button @onclick="() => OnUpdateQuantity.InvokeAsync((item, -1))" 
-                                            class="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                            <div class="flex items-center justify-between pt-2 border-t border-line/40">
+                                <div class="flex items-center gap-2">
+                                    <button type="button" @onclick="() => OnUpdateQuantity.InvokeAsync((item, -1))" 
+                                            class="w-7 h-7 rounded-full bg-surface border border-line flex items-center justify-center text-ink hover:border-accent transition-colors">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M20 12H4" />
                                         </svg>
                                     </button>
-                                    <span class="font-medium text-cafe-espresso w-6 text-center">@item.Quantity</span>
-                                    <button @onclick="() => OnUpdateQuantity.InvokeAsync((item, 1))"
-                                            class="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                    <span class="font-mono font-bold text-xs text-ink w-6 text-center">@item.Quantity</span>
+                                    <button type="button" @onclick="() => OnUpdateQuantity.InvokeAsync((item, 1))"
+                                            class="w-7 h-7 rounded-full bg-surface border border-line flex items-center justify-center text-ink hover:border-accent transition-colors">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
                                         </svg>
                                     </button>
                                 </div>
-                                <span class="font-semibold text-cafe-espresso">$@item.TotalPrice.ToString("F2")</span>
+                                <span class="font-mono font-bold text-sm" style="color: @AccentColor;">$@item.TotalPrice.ToString("F2")</span>
                             </div>
                         </div>
                     }
                 </div>
 
-                <div class="p-6 border-t border-gray-100 space-y-4">
-                    <div class="space-y-2">
-                        <div class="flex justify-between text-sm text-gray-500">
+                <!-- Footer & Checkout Form -->
+                <div class="p-5 border-t border-line bg-surface/90 space-y-4">
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs text-ink-muted">
                             <span>Subtotal</span>
-                            <span>$@CartTotal.ToString("F2")</span>
+                            <span class="font-mono">$@CartTotal.ToString("F2")</span>
                         </div>
-                        <div class="flex justify-between text-lg font-semibold text-cafe-espresso">
+                        <div class="flex justify-between text-base font-bold text-ink">
                             <span>Total</span>
-                            <span>$@CartTotal.ToString("F2")</span>
+                            <span class="font-mono font-bold text-lg" style="color: @AccentColor;">$@CartTotal.ToString("F2")</span>
                         </div>
                     </div>
                     
-                    <div class="space-y-3">
+                    <div class="space-y-2.5">
                         <input value="@CustomerName"
-                               @onchange="@(e => CustomerNameChanged.InvokeAsync(e.Value?.ToString() ?? string.Empty))"
-                               placeholder="Your name" 
-                               class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cafe-caramel focus:border-transparent" />
+                               @oninput="@(e => CustomerNameChanged.InvokeAsync(e.Value?.ToString() ?? string.Empty))"
+                               placeholder="Your name (for order pickup)" 
+                               class="w-full px-4 py-2.5 bg-bg border border-line rounded-xl text-ink placeholder-ink-faint text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
                         
-                        <div class="flex gap-2">
-                            <button @onclick="() => SelectedOrderTypeChanged.InvokeAsync(OrderType.DineIn)"
-                                    class="@GetOrderTypeClass(OrderType.DineIn)">
-                                Dine In
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" @onclick="() => SelectedOrderTypeChanged.InvokeAsync(OrderType.DineIn)"
+                                    class="py-2.5 rounded-xl text-xs font-semibold border transition-all @(SelectedOrderType == OrderType.DineIn ? "shadow-sm" : "bg-bg border-line text-ink-muted hover:text-ink")"
+                                    style="@(SelectedOrderType == OrderType.DineIn ? $"background-color: {AccentColor}; color: {AccentInk}; border-color: {AccentColor};" : string.Empty)">
+                                🍽️ Dine In
                             </button>
-                            <button @onclick="() => SelectedOrderTypeChanged.InvokeAsync(OrderType.TakeAway)"
-                                    class="@GetOrderTypeClass(OrderType.TakeAway)">
-                                Take Away
+                            <button type="button" @onclick="() => SelectedOrderTypeChanged.InvokeAsync(OrderType.TakeAway)"
+                                    class="py-2.5 rounded-xl text-xs font-semibold border transition-all @(SelectedOrderType == OrderType.TakeAway ? "shadow-sm" : "bg-bg border-line text-ink-muted hover:text-ink")"
+                                    style="@(SelectedOrderType == OrderType.TakeAway ? $"background-color: {AccentColor}; color: {AccentInk}; border-color: {AccentColor};" : string.Empty)">
+                                🛍️ Take Away
                             </button>
                         </div>
                     </div>
 
-                    <button @onclick="OnPlaceOrder"
+                    <button type="button" @onclick="OnPlaceOrder"
                             disabled="@(string.IsNullOrWhiteSpace(CustomerName) || Cart.Count == 0)"
-                            class="w-full py-4 bg-cafe-espresso text-white font-semibold rounded-xl hover:bg-cafe-mocha transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                        Place Order
+                            style="background-color: @AccentColor; color: @AccentInk;"
+                            class="w-full py-3.5 font-display font-bold rounded-xl text-sm transition-all hover:opacity-95 active:scale-[0.99] shadow-elevated disabled:opacity-40 disabled:cursor-not-allowed">
+                        Place Order • $@CartTotal.ToString("F2")
                     </button>
                 </div>
             }
@@ -123,12 +141,22 @@
     [Parameter] public EventCallback OnPlaceOrder { get; set; }
     [Parameter] public EventCallback<CartItem> OnRemoveFromCart { get; set; }
     [Parameter] public EventCallback<(CartItem item, int delta)> OnUpdateQuantity { get; set; }
+    [Parameter] public string? CustomAccentColor { get; set; }
 
-    private string GetOrderTypeClass(OrderType type)
+    private string AccentColor => string.IsNullOrWhiteSpace(CustomAccentColor) ? "#10b981" : CustomAccentColor;
+
+    private string AccentInk => IsLight(AccentColor) ? "#18181b" : "#ffffff";
+
+    private static bool IsLight(string hex)
     {
-        var baseClass = "flex-1 py-3 rounded-xl font-medium transition-colors ";
-        return type == SelectedOrderType
-            ? baseClass + "bg-cafe-espresso text-white"
-            : baseClass + "bg-gray-100 text-cafe-mocha hover:bg-gray-200";
+        if (string.IsNullOrEmpty(hex) || hex.Length < 7) return false;
+        try
+        {
+            var r = Convert.ToInt32(hex.Substring(1, 2), 16);
+            var g = Convert.ToInt32(hex.Substring(3, 2), 16);
+            var b = Convert.ToInt32(hex.Substring(5, 2), 16);
+            return (r * 0.299 + g * 0.587 + b * 0.114) > 160;
+        }
+        catch { return false; }
     }
 }

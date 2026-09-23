@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -36,9 +36,11 @@ public class OrderService : IOrderService
         _notificationService = notificationService;
     }
 
-    public async Task<List<Order>> GetAllOrdersAsync()
+    public async Task<List<Order>> GetAllOrdersAsync(int? outletId = null)
     {
-        var orders = await _orderRepository.GetAllWithIncludeAsync(o => o.Items);
+        var orders = outletId.HasValue
+            ? await _orderRepository.FindWithIncludeAsync(o => o.OutletId == outletId.Value, o => o.Items)
+            : await _orderRepository.GetAllWithIncludeAsync(o => o.Items);
         var allMenuItems = await _menuItemRepository.GetAllAsync();
 
         return orders.OrderByDescending(o => o.CreatedAt)
@@ -46,9 +48,11 @@ public class OrderService : IOrderService
             .ToList();
     }
 
-    public async Task<List<Order>> GetOrdersByStatusAsync(OrderStatus status)
+    public async Task<List<Order>> GetOrdersByStatusAsync(OrderStatus status, int? outletId = null)
     {
-        var orders = await _orderRepository.FindWithIncludeAsync(o => o.Status == status, o => o.Items);
+        var orders = outletId.HasValue
+            ? await _orderRepository.FindWithIncludeAsync(o => o.Status == status && o.OutletId == outletId.Value, o => o.Items)
+            : await _orderRepository.FindWithIncludeAsync(o => o.Status == status, o => o.Items);
         var allMenuItems = await _menuItemRepository.GetAllAsync();
 
         return orders.OrderBy(o => o.CreatedAt)
@@ -56,11 +60,15 @@ public class OrderService : IOrderService
             .ToList();
     }
 
-    public async Task<List<Order>> GetActiveOrdersAsync()
+    public async Task<List<Order>> GetActiveOrdersAsync(int? outletId = null)
     {
-        var orders = await _orderRepository.FindWithIncludeAsync(
-            o => o.Status != OrderStatus.Completed && o.Status != OrderStatus.Cancelled,
-            o => o.Items);
+        var orders = outletId.HasValue
+            ? await _orderRepository.FindWithIncludeAsync(
+                o => o.OutletId == outletId.Value && o.Status != OrderStatus.Completed && o.Status != OrderStatus.Cancelled,
+                o => o.Items)
+            : await _orderRepository.FindWithIncludeAsync(
+                o => o.Status != OrderStatus.Completed && o.Status != OrderStatus.Cancelled,
+                o => o.Items);
         var allMenuItems = await _menuItemRepository.GetAllAsync();
 
         return orders.OrderBy(o => o.CreatedAt)
@@ -89,14 +97,18 @@ public class OrderService : IOrderService
         return MapToModel(entity, items, menuItems);
     }
 
-    public async Task<Order> CreateOrderAsync(string customerName, List<CartItem> items, string tableNumber, OrderType type)
+    public async Task<Order> CreateOrderAsync(string customerName, List<CartItem> items, string tableNumber, OrderType type, int? outletId = null)
     {
         // Use a more robust numbering system: #YYMMDD-XXXX (where XXXX is the ID after first save)
         // Or for now, just # + ticks to ensure uniqueness without double save
         var orderNumber = $"#{DateTime.UtcNow:yyMMdd}-{Guid.NewGuid().ToString("N").Substring(0, 4).ToUpper()}";
 
-        var outlets = await _outletRepository.GetAllAsync();
-        var defaultOutletId = outlets.FirstOrDefault()?.Id ?? 1;
+        var chosenOutletId = outletId;
+        if (!chosenOutletId.HasValue)
+        {
+            var outlets = await _outletRepository.GetAllAsync();
+            chosenOutletId = outlets.FirstOrDefault()?.Id ?? 1;
+        }
 
         var orderEntity = new RollUp.Core.Entities.Order
         {
@@ -106,7 +118,7 @@ public class OrderService : IOrderService
             Type = type,
             Status = OrderStatus.Pending,
             CreatedAt = DateTime.UtcNow,
-            OutletId = defaultOutletId
+            OutletId = chosenOutletId.Value
         };
 
         // Add all items to the order entity first

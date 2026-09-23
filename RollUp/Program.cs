@@ -119,6 +119,7 @@ builder.Services.AddScoped<IQueueService, QueueService>();
 // ── Mock Services (transitioning to DB-backed Scoped services) ───────────────
 builder.Services.AddScoped<IMenuService, MenuService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<IOutletService, OutletService>();
 builder.Services.AddSingleton<IOrderNotificationService, OrderNotificationService>();
 
 // ═════════════════════════════════════════════════════════════════════════════

@@ -1,4 +1,5 @@
-﻿using RollUp.Core.Interfaces;
+using RollUp.Core.Enums;
+using RollUp.Core.Interfaces;
 
 namespace RollUp.Core.Entities;
 
@@ -8,6 +9,7 @@ public class Outlet : BaseEntity, ITenantEntity
     public string Address { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
+    public OutletType OutletType { get; set; } = OutletType.Cafe;
 
     // Multi-tenancy
     public int TenantId { get; set; }

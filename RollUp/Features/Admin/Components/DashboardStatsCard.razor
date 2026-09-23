@@ -1,19 +1,19 @@
-<div class="bg-white rounded-xl p-6 border border-stone-200">
+<div class="bg-surface rounded-card p-6 border border-line shadow-card">
     <div class="flex items-center justify-between mb-2">
-        <span class="text-stone-500 text-sm">@Title</span>
+        <span class="text-ink-muted text-sm font-medium">@Title</span>
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 @IconColorClass" viewBox="0 0 24 24" fill="currentColor">
             @IconPath
         </svg>
     </div>
-    <p class="text-3xl font-bold @ValueColorClass">@Value</p>
-    <p class="text-xs text-stone-400 mt-1">@Subtitle</p>
+    <p class="text-3xl font-bold font-display text-ink @ValueColorClass">@Value</p>
+    <p class="text-xs text-ink-faint mt-1">@Subtitle</p>
 </div>
 
 @code {
     [Parameter] public string Title { get; set; } = string.Empty;
     [Parameter] public string Value { get; set; } = string.Empty;
     [Parameter] public string Subtitle { get; set; } = string.Empty;
-    [Parameter] public string IconColorClass { get; set; } = "text-stone-500";
-    [Parameter] public string ValueColorClass { get; set; } = "text-cafe-espresso";
+    [Parameter] public string IconColorClass { get; set; } = "text-accent";
+    [Parameter] public string ValueColorClass { get; set; } = "text-ink";
     [Parameter] public RenderFragment? IconPath { get; set; }
 }

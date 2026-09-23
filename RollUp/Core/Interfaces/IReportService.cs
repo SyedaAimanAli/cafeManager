@@ -5,5 +5,5 @@ namespace RollUp.Core.Interfaces;
 
 public interface IReportService
 {
-    Task<SalesReportSummaryDto> GetSalesReportAsync(string timeframe = "7days");
+    Task<SalesReportSummaryDto> GetSalesReportAsync(string timeframe = "7days", int? outletId = null);
 }

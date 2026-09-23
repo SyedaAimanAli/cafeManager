@@ -6,4 +6,5 @@ public interface IBrandingService
 {
     Task<TenantBrandingDto> GetBrandingAsync();
     Task<bool> UpdateBrandingAsync(TenantBrandingDto dto);
+    event Action<TenantBrandingDto>? OnBrandingChanged;
 }

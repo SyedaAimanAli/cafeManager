@@ -1,4 +1,4 @@
-﻿@using RollUp.Core.Models
+@using RollUp.Core.Models
 
 <span class="px-3 py-1 rounded-full text-sm font-medium @GetStatusClass()">
     @GetStatusText()
@@ -9,12 +9,12 @@
 
     private string GetStatusClass() => Status switch
     {
-        OrderStatus.Pending => "bg-blue-100 text-blue-700",
-        OrderStatus.Preparing => "bg-amber-100 text-amber-700",
-        OrderStatus.Ready => "bg-emerald-100 text-emerald-700",
-        OrderStatus.Completed => "bg-stone-100 text-stone-700",
-        OrderStatus.Cancelled => "bg-red-100 text-red-700",
-        _ => "bg-gray-100 text-gray-700"
+        OrderStatus.Pending => "bg-blue-500/20 text-blue-300 border border-blue-500/30",
+        OrderStatus.Preparing => "bg-amber-500/20 text-amber-300 border border-amber-500/30",
+        OrderStatus.Ready => "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30",
+        OrderStatus.Completed => "bg-surface text-ink-muted border border-line",
+        OrderStatus.Cancelled => "bg-bad/20 text-bad border border-bad/30",
+        _ => "bg-surface text-ink-muted border border-line"
     };
 
     private string GetStatusText() => Status switch

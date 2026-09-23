@@ -53,4 +53,8 @@ public class TenantBrandingDto
     public string FontFamily { get; set; } = "inter";
     public string? CustomPrimaryColor { get; set; }
     public string? CustomAccentColor { get; set; }
+    public string? HeadingFont { get; set; }
+    public string? MenuLayout { get; set; }
+    public string? CoverStyle { get; set; }
+    public string? AcceptedPaymentMethods { get; set; }
 }

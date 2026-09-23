@@ -1,0 +1,626 @@
+@page "/insights"
+@page "/insight"
+@attribute [Authorize]
+
+@using RollUp.Application.DTOs
+@using RollUp.Core.Entities
+@using RollUp.Core.Interfaces
+@inject IReportService ReportService
+@inject IOutletService OutletService
+@inject IBrandingService BrandingService
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<PageTitle>Insights & Analytics — RollUp</PageTitle>
+
+<div class="p-4 md:p-8 space-y-6">
+    <!-- Header with Timeframe Toggles & Export -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-line">
+        <div>
+            <h1 class="text-2xl md:text-3xl font-display font-bold text-ink">Business Insights</h1>
+            <p class="text-xs md:text-sm text-ink-muted mt-1">
+                Real-time sales revenue, ticket throughput, and peak ordering trends
+            </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+            <!-- Branch Filter -->
+            <div class="flex items-center gap-1.5 px-3 py-1.5 bg-surface rounded-2xl border border-line">
+                <span class="text-xs font-semibold text-ink-muted">📍 Branch:</span>
+                <select @bind="selectedOutletFilter" @bind:after="OnBranchFilterChanged"
+                        class="bg-transparent text-xs font-bold text-ink focus:outline-none cursor-pointer">
+                    <option value="0" class="bg-surface text-ink">All Branches (Consolidated)</option>
+                    @foreach (var o in outlets)
+                    {
+                        <option value="@o.Id" class="bg-surface text-ink">@o.Name</option>
+                    }
+                </select>
+            </div>
+
+            <!-- Timeframe Filter -->
+            <div class="inline-flex p-1 bg-surface rounded-2xl border border-line">
+                <button type="button" @onclick='() => ChangeTimeframe("today")'
+                        class="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer @(selectedTimeframe == "today" ? "bg-accent text-accent-ink shadow-sm" : "text-ink-muted hover:text-ink")">
+                    Today
+                </button>
+                <button type="button" @onclick='() => ChangeTimeframe("7days")'
+                        class="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer @(selectedTimeframe == "7days" ? "bg-accent text-accent-ink shadow-sm" : "text-ink-muted hover:text-ink")">
+                    This Week
+                </button>
+                <button type="button" @onclick='() => ChangeTimeframe("30days")'
+                        class="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer @(selectedTimeframe == "30days" ? "bg-accent text-accent-ink shadow-sm" : "text-ink-muted hover:text-ink")">
+                    This Month
+                </button>
+                <button type="button" @onclick='() => ChangeTimeframe("all")'
+                        class="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer @(selectedTimeframe == "all" ? "bg-accent text-accent-ink shadow-sm" : "text-ink-muted hover:text-ink")">
+                    All Time
+                </button>
+            </div>
+
+            <!-- Print Action -->
+            <button type="button" @onclick="PrintReport"
+                    class="p-2.5 bg-surface hover:bg-line border border-line text-ink rounded-xl transition-colors text-xs flex items-center gap-1.5 cursor-pointer"
+                    title="Print Report">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="py-20 text-center text-ink-muted">
+            <svg class="animate-spin w-8 h-8 text-accent mx-auto mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-xs font-medium">Aggregating analytics data…</p>
+        </div>
+    }
+    else
+    {
+        <!-- 4 KPI Stat Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Total Revenue -->
+            <div class="p-5 bg-surface border border-line rounded-card flex flex-col justify-between">
+                <div class="flex items-center justify-between text-xs text-ink-muted mb-2 font-medium">
+                    <span>Total Revenue</span>
+                    <span class="p-1.5 rounded-lg bg-accent/10 text-accent font-bold">💵</span>
+                </div>
+                <div>
+                    <div class="font-display font-extrabold text-2xl text-ink">
+                        @branding.Currency @report.TotalRevenue.ToString("N2")
+                    </div>
+                    <div class="text-[11px] text-ink-muted mt-1">
+                        Gross sales for @GetTimeframeLabel()
+                    </div>
+                </div>
+            </div>
+
+            <!-- Orders Count -->
+            <div class="p-5 bg-surface border border-line rounded-card flex flex-col justify-between">
+                <div class="flex items-center justify-between text-xs text-ink-muted mb-2 font-medium">
+                    <span>Total Orders</span>
+                    <span class="p-1.5 rounded-lg bg-blue-500/10 text-blue-500 font-bold">🧾</span>
+                </div>
+                <div>
+                    <div class="font-display font-extrabold text-2xl text-ink">
+                        @report.TotalOrders.ToString("N0")
+                    </div>
+                    <div class="text-[11px] text-ink-muted mt-1">
+                        @report.DineInCount Dine-in • @report.TakeawayCount Takeaway
+                    </div>
+                </div>
+            </div>
+
+            <!-- Average Ticket -->
+            <div class="p-5 bg-surface border border-line rounded-card flex flex-col justify-between">
+                <div class="flex items-center justify-between text-xs text-ink-muted mb-2 font-medium">
+                    <span>Avg Order Value</span>
+                    <span class="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500 font-bold">📈</span>
+                </div>
+                <div>
+                    <div class="font-display font-extrabold text-2xl text-ink">
+                        @branding.Currency @report.AverageOrderValue.ToString("N2")
+                    </div>
+                    <div class="text-[11px] text-ink-muted mt-1">
+                        Average spend per customer
+                    </div>
+                </div>
+            </div>
+
+            <!-- Completed Orders -->
+            <div class="p-5 bg-surface border border-line rounded-card flex flex-col justify-between">
+                <div class="flex items-center justify-between text-xs text-ink-muted mb-2 font-medium">
+                    <span>Completed Orders</span>
+                    <span class="p-1.5 rounded-lg bg-amber-500/10 text-amber-500 font-bold">✅</span>
+                </div>
+                <div>
+                    <div class="font-display font-extrabold text-2xl text-ink">
+                        @report.CompletedOrders.ToString("N0")
+                    </div>
+                    <div class="text-[11px] text-ink-muted mt-1">
+                        @report.CancelledOrders cancelled
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PRIMARY HERO CHART: Sales & Revenue Trajectory -->
+        <div class="p-6 bg-surface border border-line rounded-card space-y-4 shadow-card">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-line/60">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h3 class="font-display font-bold text-ink text-base">Sales Performance Trajectory</h3>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-accent/15 text-accent">Live Trend</span>
+                    </div>
+                    <p class="text-xs text-ink-muted mt-0.5">Track revenue curve and order volume throughout @GetTimeframeLabel()</p>
+                </div>
+
+                <!-- Metric Toggle Pills -->
+                <div class="flex items-center gap-2">
+                    <div class="inline-flex p-1 bg-bg rounded-xl border border-line">
+                        <button type="button" @onclick='() => activeMetric = "revenue"'
+                                class="px-3 py-1 rounded-lg text-xs font-semibold transition-all @(activeMetric == "revenue" ? "bg-accent text-accent-ink shadow-sm" : "text-ink-muted hover:text-ink")">
+                            Revenue (@branding.Currency)
+                        </button>
+                        <button type="button" @onclick='() => activeMetric = "orders"'
+                                class="px-3 py-1 rounded-lg text-xs font-semibold transition-all @(activeMetric == "orders" ? "bg-accent text-accent-ink shadow-sm" : "text-ink-muted hover:text-ink")">
+                            Order Count
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            @if (report.DailyRevenue.Any())
+            {
+                <div class="relative pt-2">
+                    <!-- SVG Chart Area -->
+                    <div class="w-full relative">
+                        <svg viewBox="0 0 640 180" class="w-full h-48 sm:h-56 overflow-visible" preserveAspectRatio="none">
+                            <defs>
+                                <linearGradient id="revenueGlow" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="var(--color-accent, #C4956A)" stop-opacity="0.35" />
+                                    <stop offset="100%" stop-color="var(--color-accent, #C4956A)" stop-opacity="0.0" />
+                                </linearGradient>
+                            </defs>
+
+                            <!-- Horizontal Grid Reference Lines -->
+                            <line x1="16" y1="20" x2="624" y2="20" stroke="var(--color-line, #374151)" stroke-dasharray="3 3" opacity="0.4" />
+                            <line x1="16" y1="88" x2="624" y2="88" stroke="var(--color-line, #374151)" stroke-dasharray="3 3" opacity="0.4" />
+                            <line x1="16" y1="156" x2="624" y2="156" stroke="var(--color-line, #374151)" opacity="0.6" />
+
+                            <!-- Gradient Area Fill -->
+                            <path d="@GenerateSvgAreaPath()" fill="url(#revenueGlow)" />
+
+                            <!-- Trend Stroke Line -->
+                            <path d="@GenerateSvgPath()" fill="none" stroke="var(--color-accent, #C4956A)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+
+                            <!-- Interactive Points -->
+                            @{
+                                var maxChartVal = GetMaxTrajectoryValue();
+                            }
+                            @for (int i = 0; i < report.DailyRevenue.Count; i++)
+                            {
+                                var pt = report.DailyRevenue[i];
+                                var val = activeMetric == "revenue" ? pt.Revenue : (decimal)pt.OrdersCount;
+                                var (px, py) = GetPointCoordinates(i, report.DailyRevenue.Count, val, maxChartVal);
+                                var pxStr = px.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+                                var pyStr = py.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+
+                                <g class="group">
+                                    <circle cx="@pxStr" cy="@pyStr" r="4.5"
+                                            fill="var(--color-surface, #1e1e1e)"
+                                            stroke="var(--color-accent, #C4956A)"
+                                            stroke-width="2.5"
+                                            class="cursor-pointer transition-all duration-150" />
+                                </g>
+                            }
+                        </svg>
+                    </div>
+
+                    <!-- X-Axis Timeline Labels -->
+                    <div class="flex justify-between items-center px-2 pt-2 border-t border-line/60 text-[10px] text-ink-muted font-mono">
+                        @if (report.DailyRevenue.Count <= 12)
+                        {
+                            @foreach (var pt in report.DailyRevenue)
+                            {
+                                <span class="truncate px-1">@pt.DayLabel</span>
+                            }
+                        }
+                        else
+                        {
+                            <span>@report.DailyRevenue.First().DayLabel</span>
+                            <span>@report.DailyRevenue[report.DailyRevenue.Count / 3].DayLabel</span>
+                            <span>@report.DailyRevenue[report.DailyRevenue.Count * 2 / 3].DayLabel</span>
+                            <span>@report.DailyRevenue.Last().DayLabel</span>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="h-48 flex items-center justify-center text-xs text-ink-muted">
+                    No trajectory points available for this period.
+                </div>
+            }
+        </div>
+
+        <!-- Charts & Breakdown Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Peak Hourly Rush Bar Chart -->
+            <div class="lg:col-span-7 p-6 bg-surface border border-line rounded-card space-y-4 shadow-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-display font-bold text-ink text-base">Peak Rush Hours</h3>
+                            @{
+                                var peak = GetPeakHour();
+                                if (peak != null && peak.OrdersCount > 0)
+                                {
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-500 flex items-center gap-1">
+                                        <span>🔥 Peak:</span>
+                                        <span>@peak.HourLabel</span>
+                                    </span>
+                                }
+                            }
+                        </div>
+                        <p class="text-xs text-ink-muted">Hourly customer order volume across business hours</p>
+                    </div>
+                </div>
+
+                @if (report.HourlyTraffic.Any())
+                {
+                    <div class="h-44 flex items-end gap-1 sm:gap-2 pt-4 pb-1">
+                        @{
+                            var maxHourlyOrders = report.HourlyTraffic.Max(h => h.OrdersCount);
+                            if (maxHourlyOrders == 0) maxHourlyOrders = 1;
+                        }
+                        @foreach (var hour in report.HourlyTraffic)
+                        {
+                            var hasOrders = hour.OrdersCount > 0;
+                            var isPeakHour = hasOrders && hour.OrdersCount == maxHourlyOrders;
+                            var heightPercent = hasOrders ? Math.Max(14, (int)((double)hour.OrdersCount / maxHourlyOrders * 100)) : 0;
+
+                            <div class="flex-1 h-full flex flex-col justify-end items-center group relative cursor-pointer">
+                                <!-- Tooltip -->
+                                <div class="absolute -top-11 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all pointer-events-none bg-surface border border-line text-ink text-[10px] px-2.5 py-1 rounded-lg z-30 shadow-elevated whitespace-nowrap text-center">
+                                    <div class="font-bold">@hour.HourLabel</div>
+                                    <div class="text-accent font-semibold">@hour.OrdersCount orders @(hour.Revenue > 0 ? $"({branding.Currency} {hour.Revenue:N2})" : "")</div>
+                                </div>
+
+                                <!-- Full-height Bar Track with fixed 128px height -->
+                                <div class="w-full max-w-[28px] h-32 flex items-end justify-center rounded-lg bg-line/20 hover:bg-line/40 transition-colors p-0.5 relative">
+                                    @if (hasOrders)
+                                    {
+                                        <div class="w-full rounded-md bg-accent text-accent-ink transition-all duration-300 relative flex flex-col items-center justify-start pt-1 @(isPeakHour ? "ring-2 ring-accent shadow-sm" : "")"
+                                             style="height: @(heightPercent)%;">
+                                            @if (heightPercent >= 35)
+                                            {
+                                                <span class="text-[9px] font-bold leading-none">@hour.OrdersCount</span>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="w-full h-1 bg-line/50 rounded"></div>
+                                    }
+                                </div>
+
+                                <span class="text-[9px] sm:text-[10px] text-ink-faint font-mono mt-1.5 group-hover:text-ink transition-colors">
+                                    @GetShortHour(hour.Hour)
+                                </span>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="h-44 flex items-center justify-center text-xs text-ink-faint">
+                        No hourly traffic recorded yet.
+                    </div>
+                }
+            </div>
+
+            <!-- Top Selling Menu Items List -->
+            <div class="lg:col-span-5 p-6 bg-surface border border-line rounded-card space-y-4 shadow-card">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-display font-bold text-ink text-base">Top Performing Items</h3>
+                    <span class="text-[10px] text-ink-muted">By Revenue</span>
+                </div>
+                <div class="space-y-3">
+                    @if (report.ProductSales.Any())
+                    {
+                        var rank = 1;
+                        @foreach (var prod in report.ProductSales.Take(5))
+                        {
+                            <div class="flex items-center justify-between gap-2 text-xs p-2 rounded-xl hover:bg-line/20 transition-colors">
+                                <div class="flex items-center gap-2.5 min-w-0">
+                                    <span class="w-6 h-6 rounded-full bg-accent/15 text-accent flex items-center justify-center font-bold text-[10px] flex-shrink-0">
+                                        @rank
+                                    </span>
+                                    <div class="truncate">
+                                        <div class="font-semibold text-ink truncate">@prod.ItemName</div>
+                                        <div class="text-[10px] text-ink-muted">@prod.UnitsSold sold • @prod.CategoryName</div>
+                                    </div>
+                                </div>
+                                <div class="text-right flex-shrink-0">
+                                    <div class="font-mono font-bold text-accent">@branding.Currency @prod.Revenue.ToString("N2")</div>
+                                    <div class="text-[10px] text-ink-faint">@prod.RevenuePercentage.ToString("F0")% share</div>
+                                </div>
+                            </div>
+                            rank++;
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-xs text-ink-muted text-center py-8">No item sales recorded.</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Performance Breakdown & Visual Share Bar -->
+        <div class="p-6 bg-surface border border-line rounded-card space-y-4 shadow-card">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                    <h3 class="font-display font-bold text-ink text-base">Category Performance Breakdown</h3>
+                    <p class="text-xs text-ink-muted">Revenue contribution by product category</p>
+                </div>
+                @if (report.CategorySales.Any())
+                {
+                    <span class="text-xs font-semibold text-ink-muted">@report.CategorySales.Count categories</span>
+                }
+            </div>
+
+            <!-- Visual Category Share Multi-Bar -->
+            @if (report.CategorySales.Any())
+            {
+                <div class="space-y-2 pt-1">
+                    <div class="h-3 w-full rounded-full overflow-hidden bg-line/40 flex gap-0.5 p-0.5">
+                        @foreach (var cat in report.CategorySales)
+                        {
+                            if (cat.RevenuePercentage > 0)
+                            {
+                                <div class="h-full rounded-full transition-all hover:opacity-90"
+                                     style="width: @cat.RevenuePercentage.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)%; background-color: @cat.ColorHex;"
+                                     title="@cat.CategoryName: @cat.RevenuePercentage.ToString("F1")%"></div>
+                            }
+                        }
+                    </div>
+
+                    <!-- Category Legend Chips -->
+                    <div class="flex flex-wrap items-center gap-3 pt-1">
+                        @foreach (var cat in report.CategorySales)
+                        {
+                            <div class="flex items-center gap-1.5 text-[11px] text-ink-muted">
+                                <span class="w-2.5 h-2.5 rounded-full" style="background-color: @cat.ColorHex;"></span>
+                                <span class="font-medium text-ink">@cat.CategoryName</span>
+                                <span class="font-mono text-[10px]">(@cat.RevenuePercentage.ToString("F1")%)</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <div class="overflow-x-auto pt-2">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="border-b border-line text-ink-muted uppercase tracking-wider text-[10px]">
+                            <th class="pb-3 font-semibold">Category</th>
+                            <th class="pb-3 font-semibold text-right">Units Sold</th>
+                            <th class="pb-3 font-semibold text-right">Revenue</th>
+                            <th class="pb-3 font-semibold text-right">Share</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-line/40">
+                        @if (report.CategorySales.Any())
+                        {
+                            @foreach (var cat in report.CategorySales)
+                            {
+                                <tr class="hover:bg-line/20 transition-colors">
+                                    <td class="py-3 font-semibold text-ink flex items-center gap-2">
+                                        <span class="w-2 h-2 rounded-full" style="background-color: @cat.ColorHex;"></span>
+                                        <span>@cat.CategoryName</span>
+                                    </td>
+                                    <td class="py-3 text-right font-mono text-ink">@cat.UnitsSold</td>
+                                    <td class="py-3 text-right font-mono font-bold text-accent">
+                                        @branding.Currency @cat.Revenue.ToString("N2")
+                                    </td>
+                                    <td class="py-3 text-right font-mono text-ink-muted">
+                                        @cat.RevenuePercentage.ToString("F1")%
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="4" class="py-8 text-center text-ink-muted">
+                                    No category sales found for this timeframe.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private SalesReportSummaryDto report = new();
+    private TenantBrandingDto branding = new();
+    private List<Outlet> outlets = new();
+    private int selectedOutletFilter = 0;
+    private string selectedTimeframe = "7days";
+    private bool isLoading = true;
+    private string activeMetric = "revenue";
+
+    private decimal GetMaxTrajectoryValue()
+    {
+        if (report.DailyRevenue == null || !report.DailyRevenue.Any()) return 10m;
+        var max = activeMetric == "revenue"
+            ? report.DailyRevenue.Max(p => p.Revenue)
+            : report.DailyRevenue.Max(p => (decimal)p.OrdersCount);
+        return max > 0 ? max : 10m;
+    }
+
+    private string GenerateSvgPath()
+    {
+        if (report.DailyRevenue == null || !report.DailyRevenue.Any()) return "";
+        var points = report.DailyRevenue;
+        var max = (double)GetMaxTrajectoryValue();
+        var width = 640.0;
+        var height = 180.0;
+        var paddingX = 16.0;
+        var paddingTop = 20.0;
+        var paddingBottom = 24.0;
+        var plotWidth = width - (paddingX * 2);
+        var plotHeight = height - paddingTop - paddingBottom;
+
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < points.Count; i++)
+        {
+            var val = (double)(activeMetric == "revenue" ? points[i].Revenue : points[i].OrdersCount);
+            var x = paddingX + (points.Count > 1 ? (double)i / (points.Count - 1) * plotWidth : plotWidth / 2);
+            var y = paddingTop + plotHeight - (val / max * plotHeight);
+            if (i == 0) sb.Append(System.Globalization.CultureInfo.InvariantCulture, $"M {x:F1},{y:F1}");
+            else sb.Append(System.Globalization.CultureInfo.InvariantCulture, $" L {x:F1},{y:F1}");
+        }
+        return sb.ToString();
+    }
+
+    private string GenerateSvgAreaPath()
+    {
+        if (report.DailyRevenue == null || !report.DailyRevenue.Any()) return "";
+        var points = report.DailyRevenue;
+        var width = 640.0;
+        var height = 180.0;
+        var paddingX = 16.0;
+        var paddingTop = 20.0;
+        var paddingBottom = 24.0;
+        var plotWidth = width - (paddingX * 2);
+        var plotHeight = height - paddingTop - paddingBottom;
+        var baselineY = paddingTop + plotHeight;
+
+        var line = GenerateSvgPath();
+        if (string.IsNullOrEmpty(line)) return "";
+
+        var lastX = paddingX + (points.Count > 1 ? plotWidth : plotWidth / 2);
+        var firstX = paddingX + (points.Count > 1 ? 0 : plotWidth / 2);
+
+        return $"{line} L {lastX.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)},{baselineY.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)} L {firstX.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)},{baselineY.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)} Z";
+    }
+
+    private (double x, double y) GetPointCoordinates(int index, int totalCount, decimal value, decimal maxValue)
+    {
+        var width = 640.0;
+        var height = 180.0;
+        var paddingX = 16.0;
+        var paddingTop = 20.0;
+        var paddingBottom = 24.0;
+        var plotWidth = width - (paddingX * 2);
+        var plotHeight = height - paddingTop - paddingBottom;
+
+        var max = (double)(maxValue > 0 ? maxValue : 1);
+        var val = (double)value;
+        var x = paddingX + (totalCount > 1 ? (double)index / (totalCount - 1) * plotWidth : plotWidth / 2);
+        var y = paddingTop + plotHeight - (val / max * plotHeight);
+        return (x, y);
+    }
+
+    private string GetShortHour(int hour)
+    {
+        if (hour == 0 || hour == 24) return "12a";
+        if (hour < 12) return $"{hour}a";
+        if (hour == 12) return "12p";
+        return $"{hour - 12}p";
+    }
+
+    private HourlyTrafficPointDto? GetPeakHour()
+    {
+        if (report.HourlyTraffic == null || !report.HourlyTraffic.Any()) return null;
+        var max = report.HourlyTraffic.Max(h => h.OrdersCount);
+        if (max == 0) return null;
+        return report.HourlyTraffic.FirstOrDefault(h => h.OrdersCount == max);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        OutletService.OnActiveOutletChanged += HandleBranchChanged;
+        try
+        {
+            branding = await BrandingService.GetBrandingAsync();
+            outlets = await OutletService.GetOutletsAsync();
+            selectedOutletFilter = OutletService.ActiveOutletId ?? 0;
+        }
+        catch { }
+
+        await LoadReport();
+    }
+
+    private async void HandleBranchChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            outlets = await OutletService.GetOutletsAsync();
+            selectedOutletFilter = OutletService.ActiveOutletId ?? 0;
+            await LoadReport();
+            StateHasChanged();
+        });
+    }
+
+    private async Task OnBranchFilterChanged()
+    {
+        if (selectedOutletFilter > 0)
+        {
+            await OutletService.SetActiveOutletAsync(selectedOutletFilter);
+        }
+        await LoadReport();
+    }
+
+    private async Task ChangeTimeframe(string timeframe)
+    {
+        selectedTimeframe = timeframe;
+        await LoadReport();
+    }
+
+    private async Task LoadReport()
+    {
+        isLoading = true;
+        try
+        {
+            int? outletId = selectedOutletFilter > 0 ? selectedOutletFilter : null;
+            report = await ReportService.GetSalesReportAsync(selectedTimeframe, outletId);
+        }
+        catch { }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string GetTimeframeLabel() => selectedTimeframe switch
+    {
+        "today" => "Today",
+        "7days" => "the past 7 days",
+        "30days" => "the past 30 days",
+        _ => "all time"
+    };
+
+    private async Task PrintReport()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("window.print");
+        }
+        catch { }
+    }
+
+    public void Dispose()
+    {
+        OutletService.OnActiveOutletChanged -= HandleBranchChanged;
+    }
+}

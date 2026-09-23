@@ -1,0 +1,24 @@
+@* RollUpChip — selectable chip used in multi-select groups (categories, options) *@
+<button type="button"
+        @onclick="HandleClick"
+        class="@GetClass() @Class"
+        disabled="@Disabled">
+    @ChildContent
+</button>
+
+@code {
+    [Parameter] public bool Selected { get; set; }
+    [Parameter] public EventCallback<bool> SelectedChanged { get; set; }
+    [Parameter] public string Class { get; set; } = string.Empty;
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string GetClass() => Selected
+        ? "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-pill bg-accent text-accent-ink text-sm font-semibold transition-all"
+        : "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-pill bg-surface border border-line text-ink-muted hover:border-accent hover:text-accent text-sm font-medium transition-all";
+
+    private async Task HandleClick()
+    {
+        await SelectedChanged.InvokeAsync(!Selected);
+    }
+}

@@ -20,6 +20,10 @@ public class Tenant : BaseEntity
     public string FontFamily { get; set; } = "inter";
     public string? CustomPrimaryColor { get; set; }
     public string? CustomAccentColor { get; set; }
+    public string? HeadingFont { get; set; }      // e.g. "bricolage", "fraunces", "dm-sans"
+    public string? MenuLayout { get; set; }        // e.g. "card", "list", "compact"
+    public string? CoverStyle { get; set; }        // e.g. "full", "banner", "none"
+    public string? AcceptedPaymentMethods { get; set; }  // e.g. "Cash,Card,MobileWallet"
 
     // Navigation
     public ICollection<Outlet> Outlets { get; set; } = new List<Outlet>();

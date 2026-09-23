@@ -11,6 +11,14 @@ namespace RollUp.Application.Services;
 
 public class BrandingService : IBrandingService
 {
+    private static event Action<TenantBrandingDto>? GlobalBrandingChanged;
+
+    public event Action<TenantBrandingDto>? OnBrandingChanged
+    {
+        add => GlobalBrandingChanged += value;
+        remove => GlobalBrandingChanged -= value;
+    }
+
     private readonly AppDbContext _db;
     private readonly ITenantContext _tenantContext;
 
@@ -68,7 +76,11 @@ public class BrandingService : IBrandingService
             ColorScheme = string.IsNullOrWhiteSpace(tenant.ColorScheme) ? "espresso" : tenant.ColorScheme,
             FontFamily = string.IsNullOrWhiteSpace(tenant.FontFamily) ? "inter" : tenant.FontFamily,
             CustomPrimaryColor = tenant.CustomPrimaryColor,
-            CustomAccentColor = tenant.CustomAccentColor
+            CustomAccentColor = tenant.CustomAccentColor,
+            HeadingFont = tenant.HeadingFont,
+            MenuLayout = tenant.MenuLayout,
+            CoverStyle = tenant.CoverStyle,
+            AcceptedPaymentMethods = tenant.AcceptedPaymentMethods
         };
     }
 
@@ -103,10 +115,15 @@ public class BrandingService : IBrandingService
         tenant.FontFamily = dto.FontFamily;
         tenant.CustomPrimaryColor = dto.CustomPrimaryColor;
         tenant.CustomAccentColor = dto.CustomAccentColor;
+        tenant.HeadingFont = dto.HeadingFont;
+        tenant.MenuLayout = dto.MenuLayout;
+        tenant.CoverStyle = dto.CoverStyle;
+        tenant.AcceptedPaymentMethods = dto.AcceptedPaymentMethods;
         tenant.UpdatedAt = DateTime.UtcNow;
 
         _db.Tenants.Update(tenant);
         await _db.SaveChangesAsync();
+        GlobalBrandingChanged?.Invoke(dto);
         return true;
     }
 }

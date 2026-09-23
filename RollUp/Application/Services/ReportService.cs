@@ -23,7 +23,7 @@ public class ReportService : IReportService
         _tenantContext = tenantContext;
     }
 
-    public async Task<SalesReportSummaryDto> GetSalesReportAsync(string timeframe = "7days")
+    public async Task<SalesReportSummaryDto> GetSalesReportAsync(string timeframe = "7days", int? outletId = null)
     {
         var tenantId = _tenantContext.CurrentTenantId ?? 1;
         var now = DateTime.UtcNow;
@@ -44,6 +44,11 @@ public class ReportService : IReportService
         if (filterStart.HasValue)
         {
             query = query.Where(o => o.CreatedAt >= filterStart.Value);
+        }
+
+        if (outletId.HasValue)
+        {
+            query = query.Where(o => o.OutletId == outletId.Value);
         }
 
         var orders = await query
@@ -101,34 +106,54 @@ public class ReportService : IReportService
             .OrderByDescending(c => c.Revenue)
             .ToList();
 
-        // Daily Revenue Trajectory (last 7 or 30 days)
-        var daysSpan = timeframe switch
-        {
-            "today" => 1,
-            "7days" => 7,
-            "30days" => 30,
-            _ => 14
-        };
-
+        // Trajectory points: Hourly for "today", Daily for 7days/30days/all
         var dailyPoints = new List<DailyRevenuePointDto>();
-        for (int i = daysSpan - 1; i >= 0; i--)
+        if (timeframe == "today")
         {
-            var dayDate = now.Date.AddDays(-i);
-            var dayOrders = validOrders.Where(o => o.CreatedAt.Date == dayDate).ToList();
-            var dayItems = dayOrders.SelectMany(o => o.Items).ToList();
-
-            dailyPoints.Add(new DailyRevenuePointDto
+            for (int h = 7; h <= 22; h++)
             {
-                Date = dayDate,
-                DayLabel = timeframe == "today" ? "Today" : dayDate.ToString("ddd, MMM d", CultureInfo.InvariantCulture),
-                Revenue = dayItems.Sum(x => x.LineTotal),
-                OrdersCount = dayOrders.Count
-            });
+                var hourOrders = validOrders.Where(o => o.CreatedAt.Hour == h).ToList();
+                var hourItems = hourOrders.SelectMany(o => o.Items).ToList();
+                var timeFormatted = DateTime.Today.AddHours(h).ToString("h tt");
+
+                dailyPoints.Add(new DailyRevenuePointDto
+                {
+                    Date = now.Date.AddHours(h),
+                    DayLabel = timeFormatted,
+                    Revenue = hourItems.Sum(x => x.LineTotal),
+                    OrdersCount = hourOrders.Count
+                });
+            }
+        }
+        else
+        {
+            var daysSpan = timeframe switch
+            {
+                "7days" => 7,
+                "30days" => 30,
+                "all" => validOrders.Any() ? Math.Min(Math.Max(7, (int)(now.Date - validOrders.Min(o => o.CreatedAt).Date).TotalDays + 1), 60) : 14,
+                _ => 14
+            };
+
+            for (int i = daysSpan - 1; i >= 0; i--)
+            {
+                var dayDate = now.Date.AddDays(-i);
+                var dayOrders = validOrders.Where(o => o.CreatedAt.Date == dayDate).ToList();
+                var dayItems = dayOrders.SelectMany(o => o.Items).ToList();
+
+                dailyPoints.Add(new DailyRevenuePointDto
+                {
+                    Date = dayDate,
+                    DayLabel = dayDate.ToString("MMM d", CultureInfo.InvariantCulture),
+                    Revenue = dayItems.Sum(x => x.LineTotal),
+                    OrdersCount = dayOrders.Count
+                });
+            }
         }
 
-        // Hourly Rush Traffic (0-23 hours)
+        // Hourly Rush Traffic (7 AM to 10 PM)
         var hourlyPoints = new List<HourlyTrafficPointDto>();
-        for (int h = 7; h <= 21; h++) // Common cafe operating hours 7 AM to 9 PM
+        for (int h = 7; h <= 22; h++)
         {
             var hourOrders = validOrders.Where(o => o.CreatedAt.Hour == h).ToList();
             var hourItems = hourOrders.SelectMany(o => o.Items).ToList();

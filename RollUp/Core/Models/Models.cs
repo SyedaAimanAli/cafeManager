@@ -1,4 +1,4 @@
-﻿using RollUp.Core.Enums;
+using RollUp.Core.Enums;
 
 namespace RollUp.Core.Models;
 
@@ -12,6 +12,7 @@ public class MenuItem
     public string ImageUrl { get; set; } = string.Empty;
     public bool IsAvailable { get; set; } = true;
     public bool IsPopular { get; set; }
+    public int OutletId { get; set; }
     public List<string> Tags { get; set; } = new();
     public List<MenuItemVariant> Variants { get; set; } = new();
     public List<MenuItemAddon> Addons { get; set; } = new();

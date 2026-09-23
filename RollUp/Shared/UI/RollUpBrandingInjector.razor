@@ -1,0 +1,56 @@
+@using RollUp.Application.DTOs
+@inject IBrandingService BrandingService
+
+@if (accentHex != null)
+{
+    <style>
+        :root {
+            --color-accent: @accentHex;
+            --color-accent-ink: @accentInk;
+            --color-accent-muted: @accentMuted;
+        }
+    </style>
+}
+
+@code {
+    [Parameter] public string? OverrideAccent { get; set; }
+
+    private string? accentHex;
+    private string accentInk = "#ffffff";
+    private string accentMuted = "rgba(196,149,106,0.15)";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var hex = OverrideAccent;
+        if (string.IsNullOrEmpty(hex))
+        {
+            try
+            {
+                var branding = await BrandingService.GetBrandingAsync();
+                hex = branding.CustomAccentColor;
+            }
+            catch { /* unauthenticated — use defaults */ }
+        }
+        accentHex = hex ?? "#C4956A";
+        accentInk = IsLightColor(accentHex) ? "#1c1917" : "#ffffff";
+        accentMuted = HexToRgba(accentHex, 0.15f);
+    }
+
+    private static bool IsLightColor(string hex)
+    {
+        if (string.IsNullOrEmpty(hex) || hex.Length < 7) return false;
+        var r = Convert.ToInt32(hex.Substring(1, 2), 16);
+        var g = Convert.ToInt32(hex.Substring(3, 2), 16);
+        var b = Convert.ToInt32(hex.Substring(5, 2), 16);
+        return (r * 0.299 + g * 0.587 + b * 0.114) > 160;
+    }
+
+    private static string HexToRgba(string hex, float alpha)
+    {
+        if (string.IsNullOrEmpty(hex) || hex.Length < 7) return $"rgba(196,149,106,{alpha})";
+        var r = Convert.ToInt32(hex.Substring(1, 2), 16);
+        var g = Convert.ToInt32(hex.Substring(3, 2), 16);
+        var b = Convert.ToInt32(hex.Substring(5, 2), 16);
+        return $"rgba({r},{g},{b},{alpha.ToString(System.Globalization.CultureInfo.InvariantCulture)})";
+    }
+}

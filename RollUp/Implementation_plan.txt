@@ -1,0 +1,268 @@
+RollUp Visual Redesign & Onboarding Flow
+Background
+RollUp is a Blazor Server (ASP.NET Core 8) multi-tenant cafe management platform with Tailwind CSS v3.4, SignalR for real-time queue, and PostgreSQL. The codebase uses a CDN-served Tailwind config in _Layout.cshtml with "Cafe Espresso" tokens (cafe-espresso, cafe-mocha, cafe-caramel, cafe-cream). The compiled output is at wwwroot/css/app.css.
+
+This plan covers:
+
+Design token migration (CSS custom property–based accent, new fonts)
+A 7-step onboarding wizard at /welcome → /register → /setup
+A 5-destination authenticated shell (sidebar on desktop, bottom tab bar on mobile)
+New shared UI components in Shared/UI/
+A Menu → Design Studio sub-view within /menu
+Runtime tenant branding via CSS custom properties
+Bringing Queue, Menu Items, QR & Print, Insights, and Manage pages in line with reference prototype
+Open Questions
+IMPORTANT
+
+Question 1 – Tailwind build pipeline: The app currently loads Tailwind via CDN in _Layout.cshtml with an inline tailwind.config. No tailwind.config.js file exists in the repo—package.json has tailwindcss@3.4 as a devDependency and the compiled app.css is already included via <link>. Should I switch to a proper build-time tailwind.config.js + JIT pipeline, or continue overriding the CDN config inline? A build pipeline is required for the new accent CSS custom property tokens to work correctly with JIT.
+
+IMPORTANT
+
+Question 2 – Tenant.HeadingFont / MenuLayout / CoverStyle fields: TenantBrandingDto has ThemeTemplate, ColorScheme, FontFamily, CustomPrimaryColor, CustomAccentColor. The spec asks for AccentColorHex, HeadingFont, MenuLayout, and CoverStyle on the Tenant entity and DTO. Do you want me to add these fields to Tenant.cs and TenantBrandingDto? This requires a new EF Core migration (adding 3 columns). I will flag and not proceed without your approval per the spec's rule.
+
+IMPORTANT
+
+Question 3 – Payment toggles in onboarding step 6: There is no PaymentMethod entity or table in the current schema. Should I store the selected payment method toggles (Cash / Card / Mobile wallet) on the existing Tenant entity as comma-separated flags, or flag this for you to decide the data model first?
+
+CAUTION
+
+Question 4 – Outlet type ("Food truck / Café / Kiosk / Restaurant"): No such field exists on Tenant or Outlet. Adding it requires a migration. Shall I add OutletType to Outlet.cs (enum + migration), or store it as a free-text string on the Tenant?
+
+Proposed Changes
+Component: Design Token Layer
+[MODIFY] 
+_Layout.cshtml
+Replace current inline tailwind config with the new semantic token set:
+accent: { DEFAULT: 'var(--accent, #FF5A1F)', ink: 'var(--accent-ink, #FFFFFF)' }
+surface, bg, ink, muted, line, ok, warn, bad tokens
+borderRadius: { card: '18px', pill: '999px' }
+fontFamily: { display: ['"Bricolage Grotesque"', ...], body: ['"DM Sans"', ...], classic: ['"Fraunces"', ...] }
+darkMode: 'media' (with data-theme override support)
+Load new fonts from Google Fonts: Bricolage Grotesque, DM Sans, Fraunces (replacing Cinzel, Cormorant Garamond, etc.)
+Remove old tokens: cafe-espresso, cafe-mocha, cafe-caramel, cafe-cream, cafe-latte — replaced by new semantic aliases
+NOTE
+
+Old cafe-* classes will be migrated to new semantic classes in all .razor files touched below. Files NOT touched (e.g. CustomerMenu/, Features/Admin/PrintableMenu.razor) will keep old tokens temporarily.
+
+Component: Runtime Branding Injection
+[MODIFY] 
+MainLayout.razor
+The current MainLayout.razor is a bare pass-through with only error boundary handling. This becomes the 5-tab authenticated shell:
+
+Inject IBrandingService and call GetBrandingAsync() on init; write a <style> block into <HeadContent> setting --accent, --accent-ink CSS variables from Tenant.CustomAccentColor.
+Left sidebar (≥900px): sticky, contains logo + 5 <NavLink> destinations.
+Bottom tab bar (<900px): fixed, 5 destinations with QR as a raised circular center button.
+Not rendered on: /welcome, /register, /login, /setup — these pages use their own @layout EmptyLayout or @layout AuthLayout directive.
+[NEW] 
+EmptyLayout.razor
+Minimal LayoutComponentBase with just @Body — used by welcome/register/login/setup pages to bypass the 5-tab shell.
+
+Component: Shared UI Components (Shared/UI/)
+[MODIFY] 
+RollUpButton.razor
+Replace cafe-espresso/cafe-mocha references with bg-accent text-accent-ink hover:bg-accent/90.
+Add Variant values: Primary (accent fill), Ghost (outline only), keep existing secondary, danger.
+Add Size parameter: sm, md (default), lg.
+[MODIFY] 
+RollUpCard.razor
+Replace hardcoded bg-white border-stone-200 rounded-xl with token classes: bg-surface border border-line rounded-card.
+[MODIFY] 
+RollUpInput.razor
+Replace cafe-caramel focus rings with focus:ring-accent.
+Add Error parameter (string); render inline error text <p class="text-bad text-xs mt-1"> when set.
+[MODIFY] 
+RollUpModal.razor
+Replace cafe-espresso color references with token classes.
+[NEW] 
+RollUpChip.razor
+Selectable chip with Selected bool parameter. Selected = bg-accent text-accent-ink, unselected = bg-surface border border-line text-muted.
+
+[NEW] 
+RollUpPill.razor
+Non-interactive status pill. Variant: ok, warn, bad, default.
+
+[NEW] 
+RollUpToggleSwitch.razor
+Toggle switch (label, Checked bool, CheckedChanged callback). Thumb slides on bg-accent track when on.
+
+[NEW] 
+RollUpBottomSheet.razor
+Mobile: slide-up from bottom (translate-y animation), backdrop, swipe-to-close.
+Desktop (≥768px): centered modal overlay (like existing RollUpModal).
+Parameters: IsOpen, IsOpenChanged, Title, ChildContent, Footer, MaxWidthClass.
+[NEW] 
+WizardStep.razor
+Shell used by each onboarding step:
+
+Progress dots row at the top (receives TotalSteps, CurrentStep).
+Title + Subtitle text.
+ChildContent slot for the step body.
+Fixed footer with Back / Continue / Skip buttons (as EventCallback + string label parameters).
+Component: Onboarding Flow (new routes outside MainLayout shell)
+[NEW] 
+Welcome.razor
+@page "/welcome", @layout EmptyLayout. Marketing splash: RollUp logo, headline, two primary buttons: "Register my cafe" (/register) and "I already have an account" (/login). Full-height, accent-tinted background.
+
+[NEW] 
+Register.razor
+@page "/register", @layout EmptyLayout. Single-page form: cafe name, owner full name, email, password. Uses IAuthService.OnboardTenantAsync() with partial data (the rest is collected in /setup). On success, redirects to /setup. Inline validation, no toast.
+
+[MODIFY] 
+Login.razor
+Keep existing logic, update color tokens (cafe-caramel → accent, cafe-espresso → ink).
+On successful login, always redirect to /queue (not /kitchen).
+Add link to /welcome for new users.
+Add @layout EmptyLayout.
+[MODIFY] 
+Onboarding.razor → Setup.razor
+Currently at /signup and /onboard with 3 steps. Rename file to Setup.razor with @page "/setup", @layout EmptyLayout. Replace with 7-step wizard sharing one component's state (no page reloads between steps). Steps, using WizardStep.razor shell:
+
+Basics — Cafe/truck name (Tenant.Name), type selector (food truck / café / kiosk / restaurant — see Question 4 re: migration).
+Branding — Template presets (Cafe Espresso / Street Bold / Clean Light mapping to bistro, minimal, artisan), accent swatch picker (sets Tenant.CustomAccentColor), live preview card (tiny phone frame using the accent CSS var in real-time via style attribute, no rebuild).
+Outlet — Outlet name and address. Writes to Outlet.Name and Outlet.Address on the outlet already created during registration.
+Categories — Chip row (Mains / Sides / Drinks / Sweets / Breakfast / Specials) + free-text add-own. Calls IMenuService to create selected categories.
+Menu items — Compact add-item rows (name, price, category dropdown). "Skip for now" if empty. Creates MenuItem entities.
+Payments — Three RollUpToggleSwitch toggles (see Question 3 on data model).
+Review & Launch — Summary card per step with "Edit" links that jump back without losing later data. "Launch RollUp" → /setup/complete.
+Complete screen (step 8 or route /setup/complete): congratulatory message with owner name, single "Go to Queue" button → /queue.
+
+"Skip setup" escape hatch on every step: saves what's been filled so far, redirects to /queue.
+
+NOTE
+
+Wizard state is managed as C# fields on the single Setup.razor component (currentStep, wizardModel). No server round-trips between steps — data is only submitted on "Continue" actions that have side effects (categories, items) or on final "Launch".
+
+Component: Navigation Shell
+[MODIFY] 
+MainLayout.razor
+Complete rewrite. Destinations:
+
+Tab	Route	Icon
+Queue	/queue	≡ list
+Menu	/menu	fork/knife
+QR & Print	/share (panel)	qr code
+Insights	/insights	chart
+Manage	/manage	cog
+<NavLink> with ActiveClass="active" for each.
+Desktop (≥900px): w-56 left sidebar, sticky top-0 h-screen, scrollable body beside it.
+Mobile (<900px): fixed bottom-0 tab bar with 5 equal items; QR is a raised rounded-pill bg-accent center button above the bar.
+Absent on: /welcome, /register, /login, /setup (these use EmptyLayout).
+[MODIFY] 
+AdminNavbar.razor
+Remove — functionality merged into MainLayout.razor. All existing pages that render <AdminNavbar /> remove that line.
+
+Component: Route Merging & Redirects
+[MODIFY] 
+QueueManagement.razor
+Add @page "/queue" (already has /admin/queue and /kitchen).
+Keep /kitchen alias so external links don't break.
+Update header: dynamic headline reflecting state ("3 orders waiting" / "All caught up" / "You are closed"), Open/Closed toggle switch in header.
+Replace cafe-* tokens with new tokens.
+Remove inline <AdminNavbar />.
+[NEW] 
+KanbanBoard.razor
+Extract the Kanban grid from QueueManagement.razor into this component. Desktop = 3 columns, mobile = segmented control (Pending / Cooking / Ready) switching between single-column views. Wired to existing IOrderNotificationService events.
+
+[NEW] 
+OrderCard.razor
+Replaces / wraps existing OrderKanbanCard.razor. Parameters: Order, ColumnType, WaitThresholdMinutes (default 8). Card turns border-bad when wait exceeds threshold. Single action button whose label is context-aware: "Start cooking" → "Mark ready" → "Picked up".
+
+Component: Queue Route (/queue)
+[NEW] 
+Queue.razor
+@page "/queue" primary home after login. Includes:
+
+KanbanBoard component.
+Sold-out toggles below the board.
+Dynamic headline stat ("3 orders waiting" / "All caught up" / "You are closed").
+Open/Closed toggle in the page header.
+Existing SignalR subscription wiring unchanged (uses IOrderNotificationService).
+Component: Menu + Design Studio (/menu)
+[NEW] 
+Menu.razor
+@page "/menu". Contains a segmented control header: Items | Design Studio.
+
+Items sub-view: Pulls content from existing MenuManagement.razor logic (categories chip filter, item rows, sold-out toggles, popular badge, add/edit via RollUpBottomSheet). Removes old <AdminNavbar />.
+
+Design Studio sub-view: Content from existing MenuDesign.razor logic, refactored:
+
+Template presets renamed to match spec (Cafe Espresso / Street Bold / Clean Light, mapping to existing bistro / minimal / artisan internally).
+Accent swatch picker writes to Tenant.CustomAccentColor via IBrandingService.UpdateBrandingAsync.
+Preview pane: phone-frame using the actual CustomerMenu rendering (an embedded <iframe src="/menu/preview"> or inline component render with the live CSS var applied).
+All controls re-render preview instantly via Blazor reactivity.
+"Publish design" button calls IBrandingService.UpdateBrandingAsync.
+Component: QR & Print (/share)
+[NEW] 
+Share.razor
+@page "/share" or rendered as a bottom sheet/panel from the nav. Three sub-tabs:
+
+Menu QR — QR for the customer menu URL, copy-link and download actions.
+Table QRs — Per-table QR codes.
+Printable menu — PDF/print trigger (calls existing JS print utility).
+Uses content from existing QrManagement.razor and PrintableMenu.razor. Removes <AdminNavbar />.
+
+Component: Insights (/insights)
+[NEW] 
+Insights.razor
+@page "/insights". Migrates content from ReportsDashboard.razor:
+
+Today/This week toggle (simplified from current 4-option).
+Three stat cards (orders, sales, avg prep time).
+Busiest-hours bar chart (hourly heatmap — already exists).
+Top items ranked list.
+Recent paid orders.
+Export/print button.
+Token migration: cafe-* → semantic tokens.
+Remove <AdminNavbar />.
+Component: Manage (/manage)
+[NEW] 
+Manage.razor
+@page "/manage". Grouped list view:
+
+Outlets and look: Outlets list, Design Studio shortcut link (→ /menu with design tab active), QR shortcut (→ /share).
+Menu setup: Categories/tags (existing CategoryManagement.razor content), archived items, time-based menu schedule.
+Team and money: Users/roles (UserManagement.razor content), payments, plan/billing.
+Support.
+Remove <AdminNavbar />.
+Token Migration (all touched .razor files)
+Every touched file replaces:
+
+bg-cafe-espresso → bg-ink or bg-surface/ink-on-dark
+bg-cafe-mocha → bg-ink/80
+bg-cafe-caramel → bg-accent
+bg-cafe-cream → bg-bg
+text-cafe-espresso → text-ink
+text-cafe-caramel → text-accent
+text-cafe-cream → text-ink-dark (or just text-white on dark bg)
+border-cafe-caramel → border-accent
+focus:ring-cafe-caramel → focus:ring-accent
+font-display: Playfair Display → font-display: Bricolage Grotesque
+Hardcoded hex values in inline styles → CSS custom property refs or token classes
+What is NOT changing (per spec §8)
+Features/CustomerMenu/ — No changes to SignalR hubs, IOrderService, IMenuService, IQueueService, AppDbContext, or any API controllers.
+No new SignalR hub methods.
+No new API endpoints.
+Features/Admin/PrintableMenu.razor — kept as-is (QR & Print page links to it).
+No super-admin views.
+Flags to You (Backend decisions needed before implementation)
+WARNING
+
+Flag 1 — EF Core migration required: Adding OutletType (enum) to Outlet and HeadingFont, MenuLayout, CoverStyle to Tenant requires a migration. The wizard will gracefully skip these fields and show "coming soon" placeholders if you say no. Please confirm.
+
+WARNING
+
+Flag 2 — Payment data model: No PaymentMethod table exists. Options: (a) Add AcceptedPaymentMethods string to Tenant (comma-separated, no migration schema change needed, just a new column); (b) Create a separate table. Option (a) is minimal-impact. Please confirm.
+
+Verification Plan
+Automated / Build
+dotnet build — zero errors.
+dotnet run — app starts, /welcome renders, /queue is the post-login home.
+Manual Verification
+Register a new cafe at /welcome → /register → /setup (complete all 7 steps, and test "Skip setup").
+Login with existing account → lands on /queue (not /kitchen).
+/kitchen and /admin/queue still resolve to the same /queue board.
+Mobile view: bottom tab bar present on all authenticated routes, absent on /welcome, /login, /setup.
+Desktop view (≥900px): sidebar present.
+Menu → Design Studio: change accent color, preview updates without page reload.
+"Publish design" persists branding; reload shows new accent via CSS --accent var.
+No hardcoded hex or inline font-family in any touched .razor file (grep check).

@@ -1,36 +1,47 @@
-<button type="@Type" 
-        class="@GetButtonClass()" 
-        disabled="@Disabled" 
+@* RollUpButton — primary action button with variant + size support *@
+<button type="@Type"
+        class="@GetButtonClass()"
+        disabled="@(Disabled || IsLoading)"
         @onclick="OnClick">
-    @if (Icon != null)
+    @if (IsLoading)
     {
-        <span class="mr-2">@Icon</span>
+        <svg class="animate-spin w-4 h-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
     }
     @ChildContent
 </button>
 
 @code {
     [Parameter] public RenderFragment? ChildContent { get; set; }
-    [Parameter] public RenderFragment? Icon { get; set; }
     [Parameter] public EventCallback<Microsoft.AspNetCore.Components.Web.MouseEventArgs> OnClick { get; set; }
     [Parameter] public string Type { get; set; } = "button";
-    [Parameter] public string Variant { get; set; } = "primary"; // primary, secondary, danger, ghost
+    [Parameter] public string Variant { get; set; } = "primary"; // primary, secondary, ghost, danger
+    [Parameter] public string Size { get; set; } = "md"; // sm, md, lg
     [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
     [Parameter] public string Class { get; set; } = string.Empty;
 
     private string GetButtonClass()
     {
-        var baseClass = "inline-flex items-center justify-center font-medium rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ";
-        
+        const string baseClass = "inline-flex items-center gap-2 font-body font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed";
+
         var variantClass = Variant switch
         {
-            "primary" => "bg-cafe-espresso text-white hover:bg-cafe-mocha focus:ring-cafe-espresso",
-            "secondary" => "bg-stone-100 text-stone-700 hover:bg-stone-200 focus:ring-stone-500",
-            "danger" => "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500",
-            "ghost" => "text-stone-600 hover:bg-stone-100 focus:ring-stone-500",
-            _ => "bg-cafe-espresso text-white hover:bg-cafe-mocha"
+            "secondary" => "bg-surface border border-line text-ink hover:bg-bg",
+            "ghost"     => "text-ink-muted hover:text-ink hover:bg-accent-muted",
+            "danger"    => "bg-bad text-white hover:bg-bad/90",
+            _           => "bg-accent text-accent-ink hover:opacity-90 shadow-xs", // primary
         };
 
-        return $"{baseClass} {variantClass} px-4 py-2 {Class}";
+        var sizeClass = Size switch
+        {
+            "sm" => "px-3 py-1.5 text-xs rounded-lg",
+            "lg" => "px-6 py-3.5 text-base rounded-xl",
+            _    => "px-4 py-2.5 text-sm rounded-xl", // md
+        };
+
+        return $"{baseClass} {variantClass} {sizeClass} {Class}";
     }
 }

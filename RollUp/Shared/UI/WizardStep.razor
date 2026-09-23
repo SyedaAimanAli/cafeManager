@@ -1,0 +1,79 @@
+@* WizardStep — shell for each onboarding wizard step with progress dots and nav footer *@
+<div class="flex flex-col min-h-screen bg-black text-ink relative overflow-hidden">
+    @* Ambient decorative glow (Warm Orange) *@
+    <div class="pointer-events-none absolute inset-0 overflow-hidden">
+        <div class="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full bg-accent opacity-20 blur-3xl"></div>
+        <div class="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-accent opacity-15 blur-3xl"></div>
+    </div>
+
+    @* Progress dots *@
+    <div class="relative z-10 flex items-center justify-center gap-2 pt-8 pb-3">
+        @for (int i = 1; i <= TotalSteps; i++)
+        {
+            var stepNum = i;
+            <div class="@(stepNum == CurrentStep ? "w-7 h-2 bg-accent rounded-pill shadow-sm" : stepNum < CurrentStep ? "w-2 h-2 bg-accent/60 rounded-full" : "w-2 h-2 bg-white/20 rounded-full") transition-all duration-300"></div>
+        }
+    </div>
+
+    @* Content area *@
+    <div class="relative z-10 flex-1 max-w-xl mx-auto w-full px-5 py-4 flex flex-col justify-center">
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <h1 class="font-display font-bold text-2xl md:text-3xl text-white mb-1.5">@Title</h1>
+        }
+        @if (!string.IsNullOrEmpty(Subtitle))
+        {
+            <p class="text-white/60 text-sm mb-6">@Subtitle</p>
+        }
+        @ChildContent
+    </div>
+
+    @* Footer nav: Back | Skip | [spacer] | Continue *@
+    <div class="relative z-10 max-w-xl mx-auto w-full px-5 pb-8 pt-4 flex items-center gap-3">
+        @if (OnBack.HasDelegate && CurrentStep > 1)
+        {
+            <button type="button" @onclick="OnBack"
+                    class="px-4 py-2.5 rounded-xl font-body font-semibold text-sm text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all">
+                Back
+            </button>
+        }
+        @if (OnSkip.HasDelegate)
+        {
+            <button type="button" @onclick="OnSkip"
+                    class="text-sm text-white/40 hover:text-white/80 transition-colors">
+                @SkipLabel
+            </button>
+        }
+        <div class="flex-1"></div>
+        @if (OnContinue.HasDelegate)
+        {
+            <button type="button" @onclick="OnContinue"
+                    disabled="@(!CanContinue || IsLoading)"
+                    class="px-6 py-2.5 rounded-xl font-body font-semibold text-sm bg-accent text-accent-ink hover:opacity-90 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2">
+                @if (IsLoading)
+                {
+                    <svg class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                }
+                @ContinueLabel
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public int TotalSteps { get; set; } = 7;
+    [Parameter] public int CurrentStep { get; set; } = 1;
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string Subtitle { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback OnBack { get; set; }
+    [Parameter] public EventCallback OnContinue { get; set; }
+    [Parameter] public EventCallback OnSkip { get; set; }
+    [Parameter] public string ContinueLabel { get; set; } = "Continue";
+    [Parameter] public string SkipLabel { get; set; } = "Skip for now";
+    [Parameter] public bool CanContinue { get; set; } = true;
+    [Parameter] public bool IsLoading { get; set; }
+}

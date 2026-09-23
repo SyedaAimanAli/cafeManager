@@ -1,39 +1,41 @@
-﻿@using RollUp.Core.Models
+@using RollUp.Core.Models
 
 @if (IsOpen && Item != null)
 {
-    <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-        <div class="absolute inset-0 bg-black/50" @onclick="Close"></div>
-        <div class="relative bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
-            <div class="flex-shrink-0 relative h-48 overflow-hidden rounded-t-3xl sm:rounded-t-3xl">
+    <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in">
+        <div class="absolute inset-0 bg-black/75 backdrop-blur-xs" @onclick="Close"></div>
+        <div class="relative bg-surface border border-line w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl text-ink">
+            <!-- Modal Image Header -->
+            <div class="flex-shrink-0 relative h-48 bg-bg overflow-hidden">
                 <img src="@Item.ImageUrl" alt="@Item.Name" class="w-full h-full object-cover" />
-                <button @onclick="Close" 
-                        class="absolute top-4 right-4 p-2 bg-white/90 rounded-full shadow-lg hover:bg-white transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button type="button" @onclick="Close" 
+                        class="absolute top-4 right-4 p-2 bg-black/60 hover:bg-black/80 text-white rounded-full shadow-lg transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
                 @if (!Item.IsAvailable)
                 {
                     <div class="absolute inset-0 bg-black/60 flex items-center justify-center">
-                        <span class="bg-red-500 text-white px-4 py-2 rounded-full font-semibold">Sold Out</span>
+                        <span class="bg-bad text-white px-4 py-1.5 rounded-full font-bold text-xs">Sold Out</span>
                     </div>
                 }
             </div>
 
-            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+            <!-- Scrollable Content Body -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-5">
                 <div>
-                    <div class="flex items-start justify-between mb-2">
-                        <h2 class="font-display text-2xl font-semibold text-cafe-espresso">@Item.Name</h2>
-                        <span class="text-xl font-bold text-cafe-caramel">$@Item.Price.ToString("F2")</span>
+                    <div class="flex items-start justify-between gap-3 mb-1">
+                        <h2 class="font-display text-2xl font-bold text-ink">@Item.Name</h2>
+                        <span class="text-xl font-mono font-bold whitespace-nowrap" style="color: @AccentColor;">$@Item.Price.ToString("F2")</span>
                     </div>
-                    <p class="text-gray-600">@Item.Description</p>
+                    <p class="text-xs text-ink-muted leading-relaxed">@Item.Description</p>
                     @if (Item.Tags.Any())
                     {
-                        <div class="flex flex-wrap gap-2 mt-3">
+                        <div class="flex flex-wrap gap-1.5 mt-3">
                             @foreach (var tag in Item.Tags)
                             {
-                                <span class="px-2 py-1 bg-cafe-cream text-cafe-mocha text-xs rounded-full">@tag</span>
+                                <span class="px-2 py-0.5 bg-line/50 text-ink-muted text-[10px] font-semibold uppercase rounded-md border border-line">@tag</span>
                             }
                         </div>
                     }
@@ -41,17 +43,19 @@
 
                 @if (Item.Variants.Any())
                 {
-                    <div>
-                        <h3 class="font-medium text-cafe-espresso mb-3">Size</h3>
+                    <div class="pt-2 border-t border-line/50">
+                        <h3 class="font-display font-semibold text-xs text-ink-muted uppercase tracking-wider mb-2.5">Select Size / Variant</h3>
                         <div class="flex flex-wrap gap-2">
                             @foreach (var variant in Item.Variants)
                             {
-                                <button @onclick="() => SelectedVariant = variant.Name"
-                                        class="@GetVariantClass(variant.Name)">
+                                var isSelected = SelectedVariant == variant.Name;
+                                <button type="button" @onclick="() => SelectedVariant = variant.Name"
+                                        style="@(isSelected ? $"background-color: {AccentColor}; color: {AccentInk}; border-color: {AccentColor};" : string.Empty)"
+                                        class="px-4 py-2 rounded-xl text-xs font-semibold border transition-all @(isSelected ? "shadow-sm" : "bg-bg border-line text-ink-muted hover:text-ink")">
                                     @variant.Name
                                     @if (variant.PriceModifier > 0)
                                     {
-                                        <span class="text-xs ml-1">(+$@variant.PriceModifier.ToString("F2"))</span>
+                                        <span class="ml-1 opacity-80">(+$@variant.PriceModifier.ToString("F2"))</span>
                                     }
                                 </button>
                             }
@@ -61,58 +65,60 @@
 
                 @if (Item.Addons.Any())
                 {
-                    <div>
-                        <h3 class="font-medium text-cafe-espresso mb-3">Add-ons</h3>
+                    <div class="pt-2 border-t border-line/50">
+                        <h3 class="font-display font-semibold text-xs text-ink-muted uppercase tracking-wider mb-2.5">Customize / Add-ons</h3>
                         <div class="space-y-2">
                             @foreach (var addon in Item.Addons)
                             {
-                                <label class="flex items-center justify-between p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
+                                var isChecked = SelectedAddons.Contains(addon.Name);
+                                <label class="flex items-center justify-between p-3 bg-bg/80 border border-line rounded-xl cursor-pointer hover:border-accent/40 transition-colors">
                                     <div class="flex items-center gap-3">
                                         <input type="checkbox" 
-                                               checked="@SelectedAddons.Contains(addon.Name)"
+                                               checked="@isChecked"
                                                @onchange="() => ToggleAddon(addon.Name)"
-                                               class="w-5 h-5 rounded border-gray-300 text-cafe-caramel focus:ring-cafe-caramel" />
-                                        <span class="text-cafe-espresso">@addon.Name</span>
+                                               class="w-4 h-4 rounded border-line bg-surface text-accent focus:ring-accent" />
+                                        <span class="text-xs font-medium text-ink">@addon.Name</span>
                                     </div>
-                                    <span class="text-cafe-mocha font-medium">+$@addon.Price.ToString("F2")</span>
+                                    <span class="text-xs font-mono font-bold" style="color: @AccentColor;">+$@addon.Price.ToString("F2")</span>
                                 </label>
                             }
                         </div>
                     </div>
                 }
 
-                <div>
-                    <h3 class="font-medium text-cafe-espresso mb-3">Special Instructions</h3>
+                <div class="pt-2 border-t border-line/50">
+                    <h3 class="font-display font-semibold text-xs text-ink-muted uppercase tracking-wider mb-2">Special Instructions</h3>
                     <textarea @bind="SpecialInstructions" 
-                              placeholder="Any special requests?"
+                              placeholder="e.g. Extra hot, oat milk, no sugar…"
                               rows="2"
-                              class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cafe-caramel focus:border-transparent resize-none"></textarea>
+                              class="w-full px-4 py-2.5 bg-bg border border-line rounded-xl text-xs text-ink placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-accent resize-none"></textarea>
                 </div>
-
             </div>
 
-            <div class="flex-shrink-0 px-6 py-4 bg-stone-50 border-t border-stone-200 rounded-b-3xl">
-                <div class="flex items-center gap-4">
-                    <div class="flex items-center gap-3 bg-gray-100 rounded-xl p-1">
-                        <button @onclick="() => Quantity = Math.Max(1, Quantity - 1)"
-                                class="w-10 h-10 rounded-lg bg-white shadow flex items-center justify-center hover:bg-gray-50 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <!-- Footer / Add to Order Bar -->
+            <div class="flex-shrink-0 px-6 py-4 bg-surface border-t border-line">
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2 bg-bg border border-line rounded-xl p-1">
+                        <button type="button" @onclick="() => Quantity = Math.Max(1, Quantity - 1)"
+                                class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-ink hover:text-accent transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
                             </svg>
                         </button>
-                        <span class="font-semibold text-cafe-espresso w-8 text-center">@Quantity</span>
-                        <button @onclick="() => Quantity++"
-                                class="w-10 h-10 rounded-lg bg-white shadow flex items-center justify-center hover:bg-gray-50 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <span class="font-mono font-bold text-xs text-ink w-7 text-center">@Quantity</span>
+                        <button type="button" @onclick="() => Quantity++"
+                                class="w-8 h-8 rounded-lg bg-surface flex items-center justify-center text-ink hover:text-accent transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                             </svg>
                         </button>
                     </div>
                     
-                    <button @onclick="Submit"
+                    <button type="button" @onclick="Submit"
                             disabled="@(!Item.IsAvailable)"
-                            class="flex-1 py-4 bg-cafe-espresso text-white font-semibold rounded-xl hover:bg-cafe-mocha transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                        Add to Order - $@CalculateTotal().ToString("F2")
+                            style="background-color: @AccentColor; color: @AccentInk;"
+                            class="flex-1 py-3 font-display font-bold rounded-xl text-xs md:text-sm hover:opacity-90 active:scale-[0.99] transition-all shadow-elevated disabled:opacity-40 disabled:cursor-not-allowed">
+                        Add to Order • $@CalculateTotal().ToString("F2")
                     </button>
                 </div>
             </div>
@@ -125,11 +131,28 @@
     [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
     [Parameter] public MenuItem? Item { get; set; }
     [Parameter] public EventCallback<CartItem> OnAddToCart { get; set; }
+    [Parameter] public string? CustomAccentColor { get; set; }
 
     private string SelectedVariant { get; set; } = string.Empty;
     private List<string> SelectedAddons { get; set; } = new();
     private string SpecialInstructions { get; set; } = string.Empty;
     private int Quantity { get; set; } = 1;
+
+    private string AccentColor => string.IsNullOrWhiteSpace(CustomAccentColor) ? "#10b981" : CustomAccentColor;
+    private string AccentInk => IsLight(AccentColor) ? "#18181b" : "#ffffff";
+
+    private static bool IsLight(string hex)
+    {
+        if (string.IsNullOrEmpty(hex) || hex.Length < 7) return false;
+        try
+        {
+            var r = Convert.ToInt32(hex.Substring(1, 2), 16);
+            var g = Convert.ToInt32(hex.Substring(3, 2), 16);
+            var b = Convert.ToInt32(hex.Substring(5, 2), 16);
+            return (r * 0.299 + g * 0.587 + b * 0.114) > 160;
+        }
+        catch { return false; }
+    }
 
     protected override void OnParametersSet()
     {
@@ -148,14 +171,6 @@
             SelectedAddons.Remove(addon);
         else
             SelectedAddons.Add(addon);
-    }
-
-    private string GetVariantClass(string variant)
-    {
-        var baseClass = "px-4 py-2 rounded-xl text-sm font-medium transition-colors ";
-        return variant == SelectedVariant
-            ? baseClass + "bg-cafe-espresso text-white"
-            : baseClass + "bg-gray-100 text-cafe-mocha hover:bg-gray-200";
     }
 
     private decimal CalculateTotal()

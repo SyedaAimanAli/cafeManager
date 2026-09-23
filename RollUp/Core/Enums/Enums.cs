@@ -1,4 +1,4 @@
-﻿namespace RollUp.Core.Enums;
+namespace RollUp.Core.Enums;
 
 public enum Role
 {
@@ -30,4 +30,14 @@ public enum OrderType
 {
     DineIn,
     TakeAway
+}
+
+public enum OutletType
+{
+    Cafe,
+    FoodTruck,
+    Kiosk,
+    Restaurant,
+    Bakery,
+    Bistro
 }

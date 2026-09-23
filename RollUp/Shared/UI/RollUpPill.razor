@@ -1,0 +1,18 @@
+@* RollUpPill — non-interactive status pill (display-only, use RollUpBadge for badges with dots) *@
+<span class="@GetClass() @Class">
+    @ChildContent
+</span>
+
+@code {
+    [Parameter] public string Variant { get; set; } = "default"; // ok/success, warn/warning, bad/danger/error, default
+    [Parameter] public string Class { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string GetClass() => Variant switch
+    {
+        "ok" or "success"           => "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-pill text-xs font-semibold bg-ok-bg text-ok-text",
+        "warn" or "warning"         => "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-pill text-xs font-semibold bg-warn-bg text-warn-text",
+        "bad" or "danger" or "error"=> "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-pill text-xs font-semibold bg-bad-bg text-bad-text",
+        _                           => "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-pill text-xs font-semibold bg-bg text-ink-muted border border-line",
+    };
+}

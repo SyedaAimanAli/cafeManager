@@ -1,122 +1,165 @@
 @using RollUp.Core.Models
 
-<div @onclick="() => OnAddToCart.InvokeAsync(Item)" 
-     class="@GetCardClass()">
-    <div class="relative w-24 h-24 flex-shrink-0 rounded-2xl overflow-hidden shadow-2xs">
-        <img src="@Item.ImageUrl" alt="@Item.Name" class="w-full h-full object-cover" />
-        @if (!Item.IsAvailable)
-        {
-            <div class="absolute inset-0 bg-black/60 flex items-center justify-center">
-                <span class="text-white text-xs font-semibold">Sold Out</span>
-            </div>
-        }
-        @if (Item.IsPopular && Item.IsAvailable)
-        {
-            <div class="absolute top-1.5 left-1.5 @GetPopularBadgeClass() text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
-                Popular
-            </div>
-        }
-    </div>
-    
-    <div class="flex-1 min-w-0">
-        <div class="flex items-start justify-between gap-2">
-            <h3 class="font-bold text-sm truncate @GetTitleColorClass()">@Item.Name</h3>
-            <span class="font-bold text-sm whitespace-nowrap @GetPriceColorClass()">@Currency @Item.Price.ToString("F2")</span>
-        </div>
-        <p class="text-xs @GetDescriptionColorClass() line-clamp-2 mt-1 leading-relaxed">@Item.Description</p>
-        @if (Item.Tags.Any())
-        {
-            <div class="flex flex-wrap gap-1 mt-2">
-                @foreach (var tag in Item.Tags.Take(3))
+@if (MenuLayout == "compact")
+{
+    @* ── COMPACT FAST-ORDER ROW ─────────────────────────────────────────── *@
+    <div @onclick="() => OnAddToCart.InvokeAsync(Item)"
+         class="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-surface border border-line hover:border-accent/60 transition-all cursor-pointer group shadow-2xs @(!Item.IsAvailable ? "opacity-60" : "")">
+        <div class="flex items-center gap-3 min-w-0 flex-1">
+            <div class="relative w-12 h-12 flex-shrink-0 rounded-lg overflow-hidden bg-bg">
+                <img src="@Item.ImageUrl" alt="@Item.Name" class="w-full h-full object-cover" />
+                @if (!Item.IsAvailable)
                 {
-                    <span class="px-1.5 py-0.5 @GetTagClass() text-[9px] uppercase tracking-wider font-semibold rounded-md border">@tag</span>
+                    <div class="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <span class="text-white text-[9px] font-bold">Sold Out</span>
+                    </div>
                 }
             </div>
-        }
+            <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                    <h3 class="font-display font-semibold text-sm text-ink truncate group-hover:text-accent transition-colors">@Item.Name</h3>
+                    @if (Item.IsPopular && Item.IsAvailable)
+                    {
+                        <span class="px-1.5 py-0.2 text-[9px] font-bold rounded-pill" style="background-color: @AccentColor; color: @AccentInk;">★ POPULAR</span>
+                    }
+                </div>
+                <p class="text-xs text-ink-muted truncate">@Item.Description</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3 flex-shrink-0">
+            <span class="font-mono font-bold text-sm" style="color: @AccentColor;">@Currency @Item.Price.ToString("F2")</span>
+            <button type="button" class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow-xs transition-transform active:scale-95"
+                    style="background-color: @AccentColor; color: @AccentInk;" disabled="@(!Item.IsAvailable)">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+            </button>
+        </div>
     </div>
-    
-    <button class="@GetButtonClass()" disabled="@(!Item.IsAvailable)">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-    </button>
-</div>
+}
+else if (MenuLayout == "card")
+{
+    @* ── VISUAL CARD (GRID) ─────────────────────────────────────────────── *@
+    <div @onclick="() => OnAddToCart.InvokeAsync(Item)"
+         class="flex flex-col bg-surface border border-line hover:border-accent/60 rounded-2xl overflow-hidden shadow-xs hover:shadow-md transition-all cursor-pointer group @(!Item.IsAvailable ? "opacity-60" : "")">
+        <div class="relative w-full h-36 sm:h-44 bg-bg overflow-hidden flex-shrink-0">
+            <img src="@Item.ImageUrl" alt="@Item.Name" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+            @if (!Item.IsAvailable)
+            {
+                <div class="absolute inset-0 bg-black/60 flex items-center justify-center">
+                    <span class="text-white text-xs font-semibold px-3 py-1 rounded-pill bg-black/70">Sold Out</span>
+                </div>
+            }
+            @if (Item.IsPopular && Item.IsAvailable)
+            {
+                <div class="absolute top-2.5 left-2.5 text-[10px] font-bold px-2.5 py-0.5 rounded-pill uppercase tracking-wider shadow-sm"
+                     style="background-color: @AccentColor; color: @AccentInk;">
+                    ★ Popular
+                </div>
+            }
+        </div>
+
+        <div class="p-4 flex flex-col flex-1 justify-between gap-3">
+            <div>
+                <div class="flex items-start justify-between gap-2 mb-1">
+                    <h3 class="font-display font-bold text-base text-ink truncate group-hover:text-accent transition-colors">@Item.Name</h3>
+                    <span class="font-mono font-bold text-base whitespace-nowrap" style="color: @AccentColor;">@Currency @Item.Price.ToString("F2")</span>
+                </div>
+                <p class="text-xs text-ink-muted line-clamp-2 leading-relaxed">@Item.Description</p>
+                @if (Item.Tags.Any())
+                {
+                    <div class="flex flex-wrap gap-1.5 mt-2.5">
+                        @foreach (var tag in Item.Tags.Take(3))
+                        {
+                            <span class="px-2 py-0.5 bg-line/60 text-ink-muted text-[10px] uppercase font-semibold rounded-md border border-line">@tag</span>
+                        }
+                    </div>
+                }
+            </div>
+
+            <button type="button" class="w-full py-2.5 rounded-xl font-display font-semibold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-opacity hover:opacity-90 active:scale-[0.99]"
+                    style="background-color: @AccentColor; color: @AccentInk;" disabled="@(!Item.IsAvailable)">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Add to Order</span>
+            </button>
+        </div>
+    </div>
+}
+else
+{
+    @* ── EDITORIAL LIST (DEFAULT) ───────────────────────────────────────── *@
+    <div @onclick="() => OnAddToCart.InvokeAsync(Item)"
+         class="flex items-center gap-4 p-3.5 rounded-2xl bg-surface border border-line hover:border-accent/60 shadow-xs hover:shadow-md transition-all cursor-pointer group @(!Item.IsAvailable ? "opacity-60" : "")">
+        <div class="relative w-24 h-24 flex-shrink-0 rounded-2xl overflow-hidden bg-bg">
+            <img src="@Item.ImageUrl" alt="@Item.Name" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+            @if (!Item.IsAvailable)
+            {
+                <div class="absolute inset-0 bg-black/60 flex items-center justify-center">
+                    <span class="text-white text-xs font-semibold">Sold Out</span>
+                </div>
+            }
+            @if (Item.IsPopular && Item.IsAvailable)
+            {
+                <div class="absolute top-1.5 left-1.5 text-[10px] font-bold px-2 py-0.5 rounded-pill uppercase tracking-wider shadow-xs"
+                     style="background-color: @AccentColor; color: @AccentInk;">
+                    Popular
+                </div>
+            }
+        </div>
+
+        <div class="flex-1 min-w-0">
+            <div class="flex items-start justify-between gap-2">
+                <h3 class="font-display font-bold text-sm text-ink truncate group-hover:text-accent transition-colors">@Item.Name</h3>
+                <span class="font-mono font-bold text-sm whitespace-nowrap" style="color: @AccentColor;">@Currency @Item.Price.ToString("F2")</span>
+            </div>
+            <p class="text-xs text-ink-muted line-clamp-2 mt-1 leading-relaxed">@Item.Description</p>
+            @if (Item.Tags.Any())
+            {
+                <div class="flex flex-wrap gap-1 mt-2">
+                    @foreach (var tag in Item.Tags.Take(3))
+                    {
+                        <span class="px-1.5 py-0.5 bg-line/60 text-ink-muted text-[9px] uppercase tracking-wider font-semibold rounded-md border border-line">@tag</span>
+                    }
+                </div>
+            }
+        </div>
+
+        <button type="button" class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center shadow-xs transition-transform active:scale-95"
+                style="background-color: @AccentColor; color: @AccentInk;" disabled="@(!Item.IsAvailable)">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+        </button>
+    </div>
+}
 
 @code {
-    [Parameter]
-    public MenuItem Item { get; set; } = new();
+    [Parameter] public MenuItem Item { get; set; } = new();
+    [Parameter] public EventCallback<MenuItem> OnAddToCart { get; set; }
+    [Parameter] public string ThemeTemplate { get; set; } = "bistro";
+    [Parameter] public string ColorScheme { get; set; } = "espresso";
+    [Parameter] public string Currency { get; set; } = "$";
+    [Parameter] public string? CustomAccentColor { get; set; }
+    [Parameter] public string? HeadingFont { get; set; }
+    [Parameter] public string MenuLayout { get; set; } = "list";
 
-    [Parameter]
-    public EventCallback<MenuItem> OnAddToCart { get; set; }
+    private string AccentColor => string.IsNullOrWhiteSpace(CustomAccentColor) ? "#10b981" : CustomAccentColor;
 
-    [Parameter]
-    public string ThemeTemplate { get; set; } = "bistro";
+    private string AccentInk => IsLight(AccentColor) ? "#18181b" : "#ffffff";
 
-    [Parameter]
-    public string ColorScheme { get; set; } = "espresso";
-
-    [Parameter]
-    public string Currency { get; set; } = "$";
-
-    private bool IsDark => ThemeTemplate == "dark-velvet" || ThemeTemplate == "emerald";
-
-    private string GetCardClass()
+    private static bool IsLight(string hex)
     {
-        var baseClass = "flex items-center gap-4 p-3 rounded-2xl shadow-xs transition-all cursor-pointer border ";
-        
-        var bgBorder = ThemeTemplate switch
+        if (string.IsNullOrEmpty(hex) || hex.Length < 7) return false;
+        try
         {
-            "dark-velvet" => "bg-slate-900/90 border-slate-800 hover:border-slate-700",
-            "emerald" => "bg-[#0E281F]/90 border-emerald-900/60 hover:border-emerald-800",
-            "minimal" => "bg-white border-stone-200 hover:border-stone-300",
-            "amber" => "bg-amber-50/80 border-amber-200/80 hover:border-amber-300",
-            "artisan" => "bg-[#FDFBF7] border-amber-900/10 hover:border-amber-900/20",
-            _ => "bg-white border-stone-200/80 hover:border-stone-300"
-        };
-
-        return Item.IsAvailable
-            ? baseClass + bgBorder + " hover:shadow-md hover:-translate-y-0.5"
-            : baseClass + bgBorder + " opacity-60";
-    }
-
-    private string GetTitleColorClass() => IsDark ? "text-stone-100" : "text-stone-900";
-    
-    private string GetDescriptionColorClass() => IsDark ? "text-stone-400" : "text-stone-500";
-
-    private string GetPriceColorClass() => ColorScheme switch
-    {
-        "matcha" => "text-emerald-500",
-        "royal-plum" => "text-pink-600",
-        "midnight" => "text-amber-400",
-        "terracotta" => "text-orange-600",
-        _ => IsDark ? "text-amber-300" : "text-amber-900"
-    };
-
-    private string GetPopularBadgeClass() => ColorScheme switch
-    {
-        "matcha" => "bg-emerald-700 text-white",
-        "royal-plum" => "bg-pink-700 text-white",
-        "midnight" => "bg-amber-500 text-slate-950",
-        "terracotta" => "bg-orange-700 text-white",
-        _ => "bg-amber-800 text-white"
-    };
-
-    private string GetTagClass() => IsDark
-        ? "bg-white/10 text-stone-300 border-white/10"
-        : "bg-stone-100 text-stone-600 border-stone-200";
-
-    private string GetButtonClass()
-    {
-        var baseClass = "flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all shadow-xs ";
-        if (!Item.IsAvailable) return baseClass + "bg-stone-200 text-stone-400 cursor-not-allowed";
-
-        return baseClass + (ColorScheme switch
-        {
-            "matcha" => "bg-emerald-700 text-white hover:bg-emerald-800",
-            "royal-plum" => "bg-pink-700 text-white hover:bg-pink-800",
-            "midnight" => "bg-amber-500 text-slate-950 font-bold hover:bg-amber-400",
-            "terracotta" => "bg-orange-700 text-white hover:bg-orange-800",
-            _ => "bg-[#3D2314] text-white hover:bg-[#6B4423]"
-        });
+            var r = Convert.ToInt32(hex.Substring(1, 2), 16);
+            var g = Convert.ToInt32(hex.Substring(3, 2), 16);
+            var b = Convert.ToInt32(hex.Substring(5, 2), 16);
+            return (r * 0.299 + g * 0.587 + b * 0.114) > 160;
+        }
+        catch { return false; }
     }
 }

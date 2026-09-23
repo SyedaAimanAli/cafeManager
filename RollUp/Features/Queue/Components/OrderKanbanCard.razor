@@ -1,24 +1,24 @@
-﻿@using RollUp.Core.Models
+@using RollUp.Core.Models
 
 @if (Order != null)
 {
     @if (ColumnType == OrderStatus.Pending)
     {
-        <div class="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
-            <div class="bg-blue-50 px-4 py-3 border-b border-blue-100">
+        <div class="bg-surface rounded-xl border border-line shadow-card overflow-hidden">
+            <div class="bg-blue-950/40 px-4 py-3 border-b border-blue-800/30">
                 <div class="flex items-center justify-between">
-                    <span class="text-2xl font-bold text-blue-700">@Order.OrderNumber</span>
-                    <span class="text-sm text-blue-600 whitespace-nowrap">@GetTimeSince(Order.CreatedAt)</span>
+                    <span class="text-2xl font-bold font-display text-blue-400">@Order.OrderNumber</span>
+                    <span class="text-sm text-blue-300/80 whitespace-nowrap font-mono">@GetTimeSince(Order.CreatedAt)</span>
                 </div>
             </div>
             <div class="p-4">
                 <div class="flex items-center justify-between mb-3">
                     <div>
-                        <p class="font-medium text-cafe-espresso">@Order.CustomerName</p>
-                        <p class="text-sm text-stone-500">
+                        <p class="font-medium text-ink">@Order.CustomerName</p>
+                        <p class="text-sm text-ink-muted">
                             @if (Order.Type == OrderType.TakeAway)
                             {
-                                <span class="text-amber-600 font-medium">Take Away</span>
+                                <span class="text-amber-400 font-medium">Take Away</span>
                             }
                             else if (!string.IsNullOrEmpty(Order.TableNumber))
                             {
@@ -26,36 +26,36 @@
                             }
                         </p>
                     </div>
-                    <span class="text-lg font-semibold text-cafe-caramel">$@Order.TotalAmount.ToString("F2")</span>
+                    <span class="text-lg font-semibold text-accent">$@Order.TotalAmount.ToString("F2")</span>
                 </div>
                 
                 <div class="space-y-2 mb-4">
                     @foreach (var item in Order.Items)
                     {
                         <div class="flex items-start gap-2 text-sm">
-                            <span class="font-medium text-cafe-espresso">@item.Quantity x</span>
+                            <span class="font-medium text-ink">@item.Quantity x</span>
                             <div class="flex-1">
-                                <span class="text-stone-700">@item.MenuItem.Name</span>
+                                <span class="text-ink font-medium">@item.MenuItem.Name</span>
                                 @if (!string.IsNullOrEmpty(item.SelectedVariant))
                                 {
-                                    <span class="text-stone-500"> (@item.SelectedVariant)</span>
+                                    <span class="text-ink-muted"> (@item.SelectedVariant)</span>
                                 }
                                 @if (item.SelectedAddons.Any())
                                 {
-                                    <p class="text-xs text-stone-400">+ @string.Join(", ", item.SelectedAddons)</p>
+                                    <p class="text-xs text-ink-faint">+ @string.Join(", ", item.SelectedAddons)</p>
                                 }
                                 @if (item.MenuItem.Tags.Any())
                                 {
                                     <div class="flex flex-wrap gap-1 mt-1">
                                         @foreach (var tag in item.MenuItem.Tags)
                                         {
-                                            <span class="text-[9px] px-1.5 py-0.5 bg-stone-100 text-stone-500 rounded border border-stone-200">@tag</span>
+                                            <span class="text-[9px] px-1.5 py-0.5 bg-bg text-ink-muted rounded border border-line">@tag</span>
                                         }
                                     </div>
                                 }
                                 @if (!string.IsNullOrEmpty(item.SpecialInstructions))
                                 {
-                                    <p class="text-xs text-amber-600 italic mt-1">"@item.SpecialInstructions"</p>
+                                    <p class="text-xs text-amber-400 italic mt-1">"@item.SpecialInstructions"</p>
                                 }
                             </div>
                         </div>
@@ -72,7 +72,8 @@
                         Start
                     </button>
                     <button @onclick="() => OnCancel.InvokeAsync(Order!.Id)"
-                            class="px-4 py-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                            class="px-4 py-2.5 text-bad hover:bg-bad/15 rounded-lg transition-colors"
+                            title="Cancel Order">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -83,11 +84,11 @@
     }
     else if (ColumnType == OrderStatus.Preparing)
     {
-        <div class="bg-white rounded-xl border-2 border-amber-200 shadow-sm overflow-hidden">
-            <div class="bg-amber-50 px-4 py-3 border-b border-amber-100">
+        <div class="bg-surface rounded-xl border border-amber-500/30 shadow-card overflow-hidden">
+            <div class="bg-amber-950/40 px-4 py-3 border-b border-amber-800/30">
                 <div class="flex items-center justify-between">
-                    <span class="text-2xl font-bold text-amber-700">@Order.OrderNumber</span>
-                    <span class="text-sm text-amber-600 flex items-center gap-1 whitespace-nowrap">
+                    <span class="text-2xl font-bold font-display text-amber-400">@Order.OrderNumber</span>
+                    <span class="text-sm text-amber-300/80 flex items-center gap-1 whitespace-nowrap font-mono">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
@@ -98,11 +99,11 @@
             <div class="p-4">
                 <div class="flex items-center justify-between mb-3">
                     <div>
-                        <p class="font-medium text-cafe-espresso">@Order.CustomerName</p>
-                        <p class="text-sm text-stone-500">
+                        <p class="font-medium text-ink">@Order.CustomerName</p>
+                        <p class="text-sm text-ink-muted">
                             @if (Order.Type == OrderType.TakeAway)
                             {
-                                <span class="text-amber-600 font-medium">Take Away</span>
+                                <span class="text-amber-400 font-medium">Take Away</span>
                             }
                             else if (!string.IsNullOrEmpty(Order.TableNumber))
                             {
@@ -116,19 +117,19 @@
                     @foreach (var item in Order.Items)
                     {
                         <div class="flex items-start gap-2 text-sm">
-                            <span class="font-medium text-cafe-espresso">@item.Quantity x</span>
+                            <span class="font-medium text-ink">@item.Quantity x</span>
                             <div class="flex-1">
-                                <span class="text-stone-700">@item.MenuItem.Name</span>
+                                <span class="text-ink font-medium">@item.MenuItem.Name</span>
                                 @if (!string.IsNullOrEmpty(item.SelectedVariant))
                                 {
-                                    <span class="text-stone-500"> (@item.SelectedVariant)</span>
+                                    <span class="text-ink-muted"> (@item.SelectedVariant)</span>
                                 }
                                 @if (item.MenuItem.Tags.Any())
                                 {
                                     <div class="flex flex-wrap gap-1 mt-1">
                                         @foreach (var tag in item.MenuItem.Tags)
                                         {
-                                            <span class="text-[9px] px-1.5 py-0.5 bg-stone-100 text-stone-500 rounded border border-stone-200">@tag</span>
+                                            <span class="text-[9px] px-1.5 py-0.5 bg-bg text-ink-muted rounded border border-line">@tag</span>
                                         }
                                     </div>
                                 }
@@ -149,11 +150,11 @@
     }
     else if (ColumnType == OrderStatus.Ready)
     {
-        <div class="bg-white rounded-xl border-2 border-emerald-200 shadow-sm overflow-hidden">
-            <div class="bg-emerald-50 px-4 py-3 border-b border-emerald-100">
+        <div class="bg-surface rounded-xl border border-emerald-500/30 shadow-card overflow-hidden">
+            <div class="bg-emerald-950/40 px-4 py-3 border-b border-emerald-800/30">
                 <div class="flex items-center justify-between">
-                    <span class="text-2xl font-bold text-emerald-700">@Order.OrderNumber</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-emerald-500" viewBox="0 0 24 24" fill="currentColor">
+                    <span class="text-2xl font-bold font-display text-emerald-400">@Order.OrderNumber</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-emerald-400" viewBox="0 0 24 24" fill="currentColor">
                         <path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clip-rule="evenodd" />
                     </svg>
                 </div>
@@ -161,8 +162,8 @@
             <div class="p-4">
                 <div class="flex items-center justify-between mb-3">
                     <div>
-                        <p class="font-medium text-cafe-espresso">@Order.CustomerName</p>
-                        <p class="text-sm text-emerald-600 font-medium">
+                        <p class="font-medium text-ink">@Order.CustomerName</p>
+                        <p class="text-sm text-emerald-400 font-medium">
                             @if (Order.Type == OrderType.TakeAway)
                             {
                                 <span>Waiting at counter</span>
@@ -179,12 +180,12 @@
                     </div>
                 </div>
                 
-                <div class="text-sm text-stone-500 mb-4">
+                <div class="text-sm text-ink-muted mb-4">
                     @Order.Items.Count item@(Order.Items.Count != 1 ? "s" : "") - $@Order.TotalAmount.ToString("F2")
                 </div>
 
                 <button @onclick="() => OnStatusChange.InvokeAsync((Order!, OrderStatus.Completed))"
-                        class="w-full py-2.5 bg-stone-800 text-white font-medium rounded-lg hover:bg-stone-900 transition-colors flex items-center justify-center gap-2">
+                        class="w-full py-2.5 bg-accent text-accent-ink font-semibold rounded-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-sm">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
                     </svg>

@@ -1,4 +1,4 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 using RollUp.Application.DTOs;
 using RollUp.Core.Entities;
 using RollUp.Core.Enums;
@@ -106,7 +106,11 @@ public class AuthService : IAuthService
             ContactPhone = request.ContactPhone ?? string.Empty,
             Address      = request.Address ?? string.Empty,
             Tagline      = request.Tagline,
-            IsActive     = true
+            IsActive     = true,
+            CustomAccentColor       = request.AccentColor,
+            ThemeTemplate           = request.SelectedTemplate ?? "bistro",
+            HeadingFont             = request.HeadingFont,
+            AcceptedPaymentMethods  = request.AcceptedPaymentMethods
         };
 
         _db.Tenants.Add(tenant);
@@ -131,7 +135,8 @@ public class AuthService : IAuthService
             VendorId  = vendor.Id,
             Address   = !string.IsNullOrWhiteSpace(request.Address) ? request.Address : $"{request.City}, {request.Country}",
             Phone     = request.ContactPhone ?? string.Empty,
-            IsActive  = true
+            IsActive  = true,
+            OutletType = request.OutletType
         };
 
         _db.Outlets.Add(outlet);

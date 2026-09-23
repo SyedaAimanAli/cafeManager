@@ -1,0 +1,664 @@
+@page "/menu"
+@attribute [Authorize]
+
+@using RollUp.Application.DTOs
+@using RollUp.Core.Entities
+@using RollUp.Core.Interfaces
+@using RollUp.Core.Models
+@using RollUp.Features.Admin.Components
+@inject IMenuService MenuService
+@inject IOutletService OutletService
+@inject IBrandingService BrandingService
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>Menu & Design Studio — RollUp</PageTitle>
+
+<div class="p-4 md:p-8 space-y-6 relative">
+    @if (!string.IsNullOrEmpty(toastMessage))
+    {
+        <div class="fixed top-5 right-5 z-50 animate-fade-in px-4 py-2.5 rounded-2xl shadow-2xl border flex items-center gap-2 text-xs font-bold @(isToastError ? "bg-bad/20 border-bad text-bad" : "bg-ok/20 border-ok text-ok")">
+            <span>@(isToastError ? "✕" : "✓")</span>
+            <span>@toastMessage</span>
+        </div>
+    }
+
+    <!-- Header with Segmented Switch: Items | Design Studio -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-line">
+        <div>
+            <h1 class="text-2xl md:text-3xl font-display font-bold text-ink">
+                @(activeTab == 0 ? "Menu Catalog" : "Design Studio")
+            </h1>
+            <p class="text-xs md:text-sm text-ink-muted mt-1">
+                @(activeTab == 0 ? "Manage items, prices, variants, and live availability" : "Customize customer ordering theme, brand accent, and typography")
+            </p>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <a href="@(OutletService.ActiveOutletId.HasValue ? $"/order?outletId={OutletService.ActiveOutletId.Value}" : "/order")" target="_blank"
+               class="px-3.5 py-2 bg-surface hover:bg-line/40 border border-line rounded-xl text-xs md:text-sm font-semibold text-ink flex items-center gap-1.5 transition-colors"
+               title="Open live customer ordering app in new tab">
+                <span>Customer App</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+            </a>
+
+            <!-- Segmented Tab Switcher -->
+            <div class="inline-flex p-1 bg-surface rounded-2xl border border-line">
+                <button type="button" @onclick="() => activeTab = 0"
+                        class="px-5 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all @(activeTab == 0 ? "bg-accent text-accent-ink shadow-sm" : "text-ink-muted hover:text-ink")">
+                    Items Catalog
+                </button>
+                <button type="button" @onclick="() => activeTab = 1"
+                        class="px-5 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all @(activeTab == 1 ? "bg-accent text-accent-ink shadow-sm" : "text-ink-muted hover:text-ink")">
+                    Design Studio
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @* ── SUBVIEW 1: MENU ITEMS CATALOG ───────────────────────────────────── *@
+    @if (activeTab == 0)
+    {
+        <!-- Action Bar: Search, Category Filters, Add Item -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-2 flex-1">
+                <!-- Search Input -->
+                <div class="relative w-full sm:w-64">
+                    <input type="text" @bind="searchTerm" @bind:event="oninput" placeholder="Search items…"
+                           class="w-full pl-9 pr-3 py-2 bg-surface border border-line rounded-xl text-xs md:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent" />
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-ink-faint absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+
+                <!-- Category Chips Filter -->
+                <div class="flex flex-wrap gap-1.5 items-center">
+                    <button type="button" @onclick='() => selectedCategory = "All"'
+                            class="px-3 py-1.5 rounded-pill text-xs font-semibold border transition-all @(selectedCategory == "All" ? "bg-accent text-accent-ink border-accent shadow-sm" : "bg-surface border-line text-ink-muted hover:text-ink hover:border-accent/40")">
+                        All (@allItems.Count)
+                    </button>
+                    @foreach (var cat in categories)
+                    {
+                        var isSelected = selectedCategory == cat;
+                        <button type="button" @onclick="() => selectedCategory = cat"
+                                class="px-3 py-1.5 rounded-pill text-xs font-semibold border transition-all @(isSelected ? "bg-accent text-accent-ink border-accent shadow-sm" : "bg-surface border-line text-ink-muted hover:text-ink hover:border-accent/40")">
+                            @cat
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <button type="button" @onclick="OpenAddItemModal"
+                    class="px-4 py-2 bg-accent text-accent-ink font-semibold rounded-pill hover:opacity-90 transition-all text-xs md:text-sm flex items-center justify-center gap-1.5 shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Add Item</span>
+            </button>
+        </div>
+
+        <!-- Items Grid -->
+        @if (FilteredItems.Any())
+        {
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                @foreach (var item in FilteredItems)
+                {
+                    var curItem = item;
+                    <div class="p-4 bg-surface border border-line rounded-card flex flex-col justify-between hover:border-accent/40 transition-all group">
+                        <div>
+                            <div class="flex items-start justify-between gap-3 mb-2">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <h3 class="font-display font-bold text-ink text-base truncate">@curItem.Name</h3>
+                                        @if (curItem.IsPopular)
+                                        {
+                                            <span class="px-2 py-0.5 rounded-pill bg-accent/20 text-accent text-[10px] font-bold">POPULAR</span>
+                                        }
+                                    </div>
+                                    <span class="inline-block text-[11px] text-ink-muted bg-line/50 px-2 py-0.5 rounded-full mt-0.5">@curItem.Category</span>
+                                </div>
+                                <span class="font-mono font-bold text-base text-accent">$@curItem.Price.ToString("F2")</span>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(curItem.Description))
+                            {
+                                <p class="text-xs text-ink-muted line-clamp-2 mb-3">@curItem.Description</p>
+                            }
+                        </div>
+
+                        <!-- Footer: Availability Toggle + Edit/Delete Buttons -->
+                        <div class="pt-3 border-t border-line flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <RollUpToggleSwitch Checked="@curItem.IsAvailable"
+                                                    CheckedChanged="@(async val => await ToggleAvailability(curItem.Id))" />
+                                <span class="text-xs @(curItem.IsAvailable ? "text-ok font-medium" : "text-bad font-medium")">
+                                    @(curItem.IsAvailable ? "Available" : "Sold Out")
+                                </span>
+                            </div>
+
+                            <div class="flex items-center gap-1">
+                                <button type="button" @onclick="() => EditItem(curItem)"
+                                        class="p-1.5 text-ink-muted hover:text-ink hover:bg-line/50 rounded-lg transition-colors text-xs"
+                                        title="Edit">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </button>
+                                <button type="button" @onclick="() => DeleteItem(curItem.Id)"
+                                        class="p-1.5 text-ink-muted hover:text-bad hover:bg-bad/10 rounded-lg transition-colors text-xs"
+                                        title="Delete">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="p-12 text-center bg-surface rounded-card border border-line">
+                <p class="text-ink-muted text-sm mb-3">No menu items match your search or filter.</p>
+                <button type="button" @onclick="OpenAddItemModal" class="px-5 py-2.5 bg-accent text-accent-ink font-bold rounded-pill text-xs shadow-sm hover:opacity-90 transition-all cursor-pointer">
+                    + Add First Item
+                </button>
+            </div>
+        }
+    }
+
+    @* ── SUBVIEW 2: DESIGN STUDIO ────────────────────────────────────────── *@
+    @if (activeTab == 1)
+    {
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <!-- Left Controls: Theme, Swatch, Fonts, Layout -->
+            <div class="lg:col-span-7 space-y-6">
+                <!-- Theme Template -->
+                <div class="p-5 bg-surface border border-line rounded-card space-y-3">
+                    <h3 class="font-display font-bold text-ink text-base">1. Theme Style</h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                        @foreach (var theme in themeStyles)
+                        {
+                            var isSelected = brandingModel.ThemeTemplate == theme.Key;
+                            <button type="button" @onclick="() => brandingModel.ThemeTemplate = theme.Key"
+                                    class="p-3.5 rounded-xl border text-left transition-all @(isSelected ? "bg-accent/10 border-accent ring-2 ring-accent/30 text-ink" : "bg-bg border-line text-ink-muted hover:border-accent")">
+                                <div class="font-bold text-xs mb-0.5">@theme.Value</div>
+                                <div class="text-[10px] text-ink-faint">@theme.Description</div>
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                <!-- Accent Color Swatch -->
+                <div class="p-5 bg-surface border border-line rounded-card space-y-3">
+                    <h3 class="font-display font-bold text-ink text-base">2. Brand Accent Color</h3>
+                    <p class="text-xs text-ink-muted">Injected dynamically as CSS variable for buttons, badges & active tabs</p>
+                    <div class="flex flex-wrap gap-3 items-center pt-1">
+                        @foreach (var col in swatches)
+                        {
+                            var isSelected = string.Equals(brandingModel.CustomAccentColor, col.Hex, StringComparison.OrdinalIgnoreCase);
+                            <button type="button" @onclick="() => brandingModel.CustomAccentColor = col.Hex"
+                                    class="w-10 h-10 rounded-full transition-all flex items-center justify-center shadow-sm @(isSelected ? "scale-110 ring-4 ring-offset-2 ring-accent" : "hover:scale-105")"
+                                    style="background-color: @col.Hex;" title="@col.Name">
+                                @if (isSelected)
+                                {
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-white drop-shadow" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                    </svg>
+                                }
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                <!-- Typography & Layout Options -->
+                <div class="p-5 bg-surface border border-line rounded-card space-y-4">
+                    <h3 class="font-display font-bold text-ink text-base">3. Layout & Typography</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-ink-muted mb-1.5">Heading Font</label>
+                            <select @bind="brandingModel.HeadingFont" class="w-full px-3 py-2 bg-bg border border-line rounded-xl text-xs text-ink focus:outline-none focus:ring-2 focus:ring-accent">
+                                <option value="bricolage">Bricolage Grotesque (Modern Punchy)</option>
+                                <option value="fraunces">Fraunces (Warm Editorial Serif)</option>
+                                <option value="dm-sans">DM Sans (Clean Contemporary)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-ink-muted mb-1.5">Menu Item Layout</label>
+                            <select @bind="brandingModel.MenuLayout" class="w-full px-3 py-2 bg-bg border border-line rounded-xl text-xs text-ink focus:outline-none focus:ring-2 focus:ring-accent">
+                                <option value="card">Visual Cards (Grid)</option>
+                                <option value="list">Editorial List</option>
+                                <option value="compact">Compact Fast-Order</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Publish Design Button -->
+                <div class="flex items-center gap-3">
+                    <button type="button" @onclick="PublishDesign" disabled="@isSavingDesign"
+                            class="px-6 py-3 bg-accent text-accent-ink font-bold rounded-pill hover:opacity-90 disabled:opacity-50 transition-all flex items-center gap-2 shadow-elevated text-sm">
+                        @if (isSavingDesign)
+                        {
+                            <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>Publishing…</span>
+                        }
+                        else
+                        {
+                            <span>Publish Design</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                            </svg>
+                        }
+                    </button>
+
+                    @if (isDesignSaved)
+                    {
+                        <span class="text-xs font-semibold text-ok animate-fade-in flex items-center gap-1">
+                            ✓ Published live to customer menu!
+                        </span>
+                    }
+                </div>
+            </div>
+
+            <!-- Right: Interactive Live Customer Menu Preview -->
+            <div class="lg:col-span-5 sticky top-6">
+                <div class="p-4 bg-surface border border-line rounded-3xl shadow-elevated">
+                    <div class="text-xs uppercase font-semibold tracking-wider text-ink-muted mb-3 flex items-center justify-between">
+                        <span>Live Phone Preview</span>
+                        <span class="text-[10px] text-ink-faint">Updates instantly</span>
+                    </div>
+
+                    <!-- Phone Frame -->
+                    <div class="w-full max-w-[320px] mx-auto rounded-[36px] p-3 bg-stone-900 border-4 border-stone-800 shadow-2xl text-white overflow-hidden"
+                         style="--preview-accent: @(string.IsNullOrWhiteSpace(brandingModel.CustomAccentColor) ? "#10b981" : brandingModel.CustomAccentColor); --preview-font: @GetPreviewFont();">
+                        <div class="rounded-[26px] p-4 min-h-[460px] flex flex-col justify-between transition-colors"
+                             style="background-color: @GetPreviewBg(); font-family: var(--preview-font);">
+                            <!-- Top Bar -->
+                            <div>
+                                <div class="w-20 h-4 bg-stone-800 rounded-pill mx-auto mb-3"></div>
+                                <div class="flex items-center justify-between pb-3 border-b border-white/10 mb-3">
+                                    <div>
+                                        <h4 class="font-bold text-sm text-white truncate max-w-[170px]" style="font-family: var(--preview-font);">
+                                            @(string.IsNullOrWhiteSpace(brandingModel.BusinessName) ? "RollUp Café" : brandingModel.BusinessName)
+                                        </h4>
+                                        <span class="text-[10px] text-stone-400 capitalize">@brandingModel.ThemeTemplate • @(brandingModel.MenuLayout ?? "list")</span>
+                                    </div>
+                                    <span class="text-[10px] px-2 py-0.5 rounded-pill font-bold" style="background-color: var(--preview-accent); color: #000;">
+                                        Open
+                                    </span>
+                                </div>
+
+                                <!-- Category pill demo -->
+                                <div class="flex gap-1.5 overflow-x-hidden mb-3">
+                                    <span class="px-2.5 py-1 rounded-pill text-[10px] font-bold" style="background-color: var(--preview-accent); color: #000;">Coffee</span>
+                                    <span class="px-2.5 py-1 rounded-pill text-[10px] text-stone-300 border" style="background-color: @GetPreviewSurface(); border-color: @GetPreviewLine();">Pastries</span>
+                                    <span class="px-2.5 py-1 rounded-pill text-[10px] text-stone-300 border" style="background-color: @GetPreviewSurface(); border-color: @GetPreviewLine();">Cold Brew</span>
+                                </div>
+
+                                <!-- Sample Menu Sections according to selected MenuLayout -->
+                                <div class="space-y-2">
+                                    <div class="text-[10px] font-bold text-stone-400 uppercase tracking-wider" style="font-family: var(--preview-font);">Menu Preview</div>
+
+                                    @if (brandingModel.MenuLayout == "card")
+                                    {
+                                        <!-- Visual Cards Layout -->
+                                        <div class="space-y-2">
+                                            <div class="rounded-xl overflow-hidden border transition-all"
+                                                 style="background-color: @GetPreviewSurface(); border-color: @GetPreviewLine();">
+                                                <div class="h-16 w-full bg-stone-800 flex items-center justify-center text-[10px] text-stone-400">
+                                                    ☕ Flat White Image
+                                                </div>
+                                                <div class="p-2 flex items-center justify-between">
+                                                    <div>
+                                                        <div class="text-xs font-bold text-white" style="font-family: var(--preview-font);">Flat White</div>
+                                                        <div class="text-[9px] text-stone-400">Velvet microfoam</div>
+                                                    </div>
+                                                    <span class="text-xs font-bold font-mono" style="color: var(--preview-accent);">$4.50</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="rounded-xl overflow-hidden border transition-all"
+                                                 style="background-color: @GetPreviewSurface(); border-color: @GetPreviewLine();">
+                                                <div class="h-16 w-full bg-stone-800 flex items-center justify-center text-[10px] text-stone-400">
+                                                    🥐 Croissant Image
+                                                </div>
+                                                <div class="p-2 flex items-center justify-between">
+                                                    <div>
+                                                        <div class="text-xs font-bold text-white" style="font-family: var(--preview-font);">Butter Croissant</div>
+                                                        <div class="text-[9px] text-stone-400">Flaky French butter</div>
+                                                    </div>
+                                                    <span class="text-xs font-bold font-mono" style="color: var(--preview-accent);">$3.75</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                    else if (brandingModel.MenuLayout == "compact")
+                                    {
+                                        <!-- Compact Fast-Order Rows -->
+                                        <div class="space-y-1.5">
+                                            <div class="px-2.5 py-2 rounded-lg border flex items-center justify-between transition-all"
+                                                 style="background-color: @GetPreviewSurface(); border-color: @GetPreviewLine();">
+                                                <div class="text-xs font-semibold text-white" style="font-family: var(--preview-font);">Flat White</div>
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-xs font-mono font-bold" style="color: var(--preview-accent);">$4.50</span>
+                                                    <span class="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold" style="background-color: var(--preview-accent); color: #000;">+</span>
+                                                </div>
+                                            </div>
+                                            <div class="px-2.5 py-2 rounded-lg border flex items-center justify-between transition-all"
+                                                 style="background-color: @GetPreviewSurface(); border-color: @GetPreviewLine();">
+                                                <div class="text-xs font-semibold text-white" style="font-family: var(--preview-font);">Vanilla Oat Latte</div>
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-xs font-mono font-bold" style="color: var(--preview-accent);">$5.25</span>
+                                                    <span class="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold" style="background-color: var(--preview-accent); color: #000;">+</span>
+                                                </div>
+                                            </div>
+                                            <div class="px-2.5 py-2 rounded-lg border flex items-center justify-between transition-all"
+                                                 style="background-color: @GetPreviewSurface(); border-color: @GetPreviewLine();">
+                                                <div class="text-xs font-semibold text-white" style="font-family: var(--preview-font);">Butter Croissant</div>
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-xs font-mono font-bold" style="color: var(--preview-accent);">$3.75</span>
+                                                    <span class="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold" style="background-color: var(--preview-accent); color: #000;">+</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <!-- Editorial List Layout (Default) -->
+                                        <div class="space-y-2">
+                                            <div class="p-2.5 rounded-xl border flex items-center justify-between transition-all"
+                                                 style="background-color: @GetPreviewSurface(); border-color: @GetPreviewLine();">
+                                                <div class="flex items-center gap-2.5">
+                                                    <div class="w-9 h-9 rounded-lg bg-stone-800 flex items-center justify-center text-[11px]">☕</div>
+                                                    <div>
+                                                        <div class="text-xs font-semibold text-white" style="font-family: var(--preview-font);">Flat White</div>
+                                                        <div class="text-[9px] text-stone-400">Velvet microfoam</div>
+                                                    </div>
+                                                </div>
+                                                <span class="text-xs font-bold font-mono" style="color: var(--preview-accent);">$4.50</span>
+                                            </div>
+
+                                            <div class="p-2.5 rounded-xl border flex items-center justify-between transition-all"
+                                                 style="background-color: @GetPreviewSurface(); border-color: @GetPreviewLine();">
+                                                <div class="flex items-center gap-2.5">
+                                                    <div class="w-9 h-9 rounded-lg bg-stone-800 flex items-center justify-center text-[11px]">🥛</div>
+                                                    <div>
+                                                        <div class="text-xs font-semibold text-white" style="font-family: var(--preview-font);">Vanilla Oat Latte</div>
+                                                        <div class="text-[9px] text-stone-400">House vanilla</div>
+                                                    </div>
+                                                </div>
+                                                <span class="text-xs font-bold font-mono" style="color: var(--preview-accent);">$5.25</span>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+
+                            <!-- Bottom CTA -->
+                            <div class="pt-3 border-t border-white/10">
+                                <button type="button" class="w-full py-2.5 rounded-pill text-xs font-bold flex items-center justify-center gap-1.5 shadow-md"
+                                        style="background-color: var(--preview-accent); color: #000; font-family: var(--preview-font);">
+                                    View Cart (2 items) &rarr;
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Add/Edit Item Modal -->
+<MenuItemFormModal IsOpen="@isModalOpen"
+                   Item="@editingItem"
+                   IsEditing="@isEditing"
+                   Categories="@categories"
+                   BranchName="@(OutletService.ActiveOutlet?.Name ?? "Main Branch")"
+                   OnSave="@HandleSaveItem"
+                   OnClose="@(() => isModalOpen = false)" />
+
+@code {
+    private int activeTab = 0;
+    private List<RollUp.Core.Models.MenuItem> allItems = new();
+    private List<string> categories = new();
+    private string searchTerm = string.Empty;
+    private string selectedCategory = "All";
+
+    // Add/Edit Modal
+    private bool isModalOpen = false;
+    private bool isEditing = false;
+    private RollUp.Core.Models.MenuItem editingItem = new();
+
+    // Design Studio
+    private TenantBrandingDto brandingModel = new();
+    private bool isSavingDesign = false;
+    private bool isDesignSaved = false;
+
+    private record ThemePreset(string Key, string Value, string Description);
+    private readonly List<ThemePreset> themeStyles = new()
+    {
+        new("bistro", "Bistro Classic", "Warm café atmosphere with amber tones"),
+        new("modern", "Modern Minimal", "High contrast clean typography"),
+        new("rustic", "Rustic Warmth", "Organic craft bakery vibe"),
+        new("minimalist", "Clean Slate", "Ultra minimal layout"),
+        new("elegant", "Artisan Luxury", "Sophisticated boutique café")
+    };
+
+    private record SwatchItem(string Hex, string Name);
+    private readonly List<SwatchItem> swatches = new()
+    {
+        new("#ff5a1f", "Electric Orange"),
+        new("#10b981", "Emerald Mint"),
+        new("#f43f5e", "Rose Berry"),
+        new("#6366f1", "Indigo Blue"),
+        new("#8b5cf6", "Artisan Violet"),
+        new("#0ea5e9", "Sky Azure")
+    };
+
+    private IEnumerable<RollUp.Core.Models.MenuItem> FilteredItems =>
+        allItems.Where(i =>
+            (selectedCategory == "All" || i.Category.Equals(selectedCategory, StringComparison.OrdinalIgnoreCase)) &&
+            (string.IsNullOrWhiteSpace(searchTerm) || i.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)));
+
+    protected override async Task OnInitializedAsync()
+    {
+        OutletService.OnActiveOutletChanged += HandleBranchChanged;
+        try
+        {
+            await OutletService.InitializeActiveOutletAsync();
+        }
+        catch { }
+        await LoadMenuData();
+        await LoadBrandingData();
+    }
+
+    private async void HandleBranchChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            await LoadMenuData();
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadMenuData()
+    {
+        try
+        {
+            var outletId = OutletService.ActiveOutletId;
+            allItems = await MenuService.GetAllItemsAsync(outletId);
+            categories = await MenuService.GetCategoriesAsync();
+        }
+        catch { }
+    }
+
+    private async Task LoadBrandingData()
+    {
+        try
+        {
+            brandingModel = await BrandingService.GetBrandingAsync();
+            if (string.IsNullOrWhiteSpace(brandingModel.CustomAccentColor))
+                brandingModel.CustomAccentColor = "#10b981";
+        }
+        catch { }
+    }
+
+    private void OpenAddItemModal()
+    {
+        editingItem = new RollUp.Core.Models.MenuItem
+        {
+            OutletId = OutletService.ActiveOutletId ?? 1,
+            Category = categories.FirstOrDefault() ?? "Coffee",
+            IsAvailable = true
+        };
+        isEditing = false;
+        isModalOpen = true;
+    }
+
+    private void EditItem(RollUp.Core.Models.MenuItem item)
+    {
+        editingItem = new RollUp.Core.Models.MenuItem
+        {
+            Id = item.Id,
+            OutletId = item.OutletId > 0 ? item.OutletId : (OutletService.ActiveOutletId ?? 1),
+            Name = item.Name,
+            Description = item.Description,
+            Price = item.Price,
+            Category = item.Category,
+            ImageUrl = item.ImageUrl,
+            IsAvailable = item.IsAvailable,
+            IsPopular = item.IsPopular
+        };
+        isEditing = true;
+        isModalOpen = true;
+    }
+
+    private string? toastMessage;
+    private bool isToastError;
+
+    private async Task ShowToast(string message, bool isError = false)
+    {
+        toastMessage = message;
+        isToastError = isError;
+        StateHasChanged();
+        await Task.Delay(3500);
+        if (toastMessage == message)
+        {
+            toastMessage = null;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleSaveItem(RollUp.Core.Models.MenuItem item)
+    {
+        try
+        {
+            if (item.OutletId <= 0 && OutletService.ActiveOutletId.HasValue)
+            {
+                item.OutletId = OutletService.ActiveOutletId.Value;
+            }
+
+            if (isEditing)
+            {
+                await MenuService.UpdateItemAsync(item);
+                _ = ShowToast($"Updated \"{item.Name}\" successfully!");
+            }
+            else
+            {
+                await MenuService.AddItemAsync(item);
+                _ = ShowToast($"Added \"{item.Name}\" to menu!");
+            }
+
+            isModalOpen = false;
+            await LoadMenuData();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            _ = ShowToast($"Failed to save item: {ex.Message}", isError: true);
+        }
+    }
+
+    private async Task ToggleAvailability(int itemId)
+    {
+        await MenuService.ToggleAvailabilityAsync(itemId, OutletService.ActiveOutletId);
+        var it = allItems.FirstOrDefault(i => i.Id == itemId);
+        if (it != null) it.IsAvailable = !it.IsAvailable;
+    }
+
+    private async Task DeleteItem(int itemId)
+    {
+        await MenuService.DeleteItemAsync(itemId);
+        allItems.RemoveAll(i => i.Id == itemId);
+    }
+
+    private async Task PublishDesign()
+    {
+        isSavingDesign = true;
+        isDesignSaved = false;
+
+        try
+        {
+            await BrandingService.UpdateBrandingAsync(brandingModel);
+            isDesignSaved = true;
+            await Task.Delay(3000);
+            isDesignSaved = false;
+        }
+        catch { }
+        finally
+        {
+            isSavingDesign = false;
+        }
+    }
+
+    private string GetPreviewBg() => brandingModel.ThemeTemplate?.ToLowerInvariant() switch
+    {
+        "bistro" => "#0c0a09",
+        "modern" => "#09090b",
+        "rustic" => "#100e0c",
+        "minimalist" => "#09090b",
+        "elegant" => "#0a0a0c",
+        _ => "#09090b"
+    };
+
+    private string GetPreviewSurface() => brandingModel.ThemeTemplate?.ToLowerInvariant() switch
+    {
+        "bistro" => "#1c1917",
+        "modern" => "#18181b",
+        "rustic" => "#1f1a16",
+        "minimalist" => "#121214",
+        "elegant" => "#141416",
+        _ => "#18181b"
+    };
+
+    private string GetPreviewLine() => brandingModel.ThemeTemplate?.ToLowerInvariant() switch
+    {
+        "bistro" => "#292524",
+        "modern" => "#27272a",
+        "rustic" => "#2e2620",
+        "minimalist" => "#202024",
+        "elegant" => "#242428",
+        _ => "#27272a"
+    };
+
+    private string GetPreviewFont() => brandingModel.HeadingFont?.ToLowerInvariant() switch
+    {
+        "fraunces" => "'Fraunces', Georgia, serif",
+        "dm-sans" => "'DM Sans', sans-serif",
+        "bricolage" => "'Bricolage Grotesque', sans-serif",
+        _ => "'Bricolage Grotesque', sans-serif"
+    };
+
+    public void Dispose()
+    {
+        OutletService.OnActiveOutletChanged -= HandleBranchChanged;
+    }
+}

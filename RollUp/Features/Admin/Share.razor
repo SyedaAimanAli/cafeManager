@@ -1,0 +1,289 @@
+@page "/share"
+@attribute [Authorize]
+
+@using RollUp.Application.DTOs
+@using RollUp.Core.Interfaces
+@inject IBrandingService BrandingService
+@inject IOutletService OutletService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<PageTitle>Share & Print Hub — RollUp</PageTitle>
+
+<div class="p-4 md:p-8 space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-line">
+        <div>
+            <div class="flex items-center gap-2">
+                <h1 class="text-2xl md:text-3xl font-display font-bold text-ink">Share & Print Hub</h1>
+                @if (OutletService.ActiveOutlet != null)
+                {
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-accent/15 text-accent flex items-center gap-1">
+                        <span>📍</span>
+                        <span>@OutletService.ActiveOutlet.Name</span>
+                    </span>
+                }
+            </div>
+            <p class="text-xs md:text-sm text-ink-muted mt-1">
+                Customer QR scan codes, table standees, and printable paper menus
+            </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+            <!-- Sub-Tabs Switcher -->
+            <div class="inline-flex p-1 bg-surface rounded-2xl border border-line">
+                <button type="button" @onclick="() => subTab = 0"
+                        class="px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all @(subTab == 0 ? "bg-accent text-accent-ink shadow-sm" : "text-ink-muted hover:text-ink")">
+                    Menu QR
+                </button>
+                <button type="button" @onclick="() => subTab = 1"
+                        class="px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all @(subTab == 1 ? "bg-accent text-accent-ink shadow-sm" : "text-ink-muted hover:text-ink")">
+                    Table QRs
+                </button>
+                <button type="button" @onclick="() => subTab = 2"
+                        class="px-4 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all @(subTab == 2 ? "bg-accent text-accent-ink shadow-sm" : "text-ink-muted hover:text-ink")">
+                    Printable Menu
+                </button>
+            </div>
+        </div>
+    </div>
+
+    @* ── SUBTAB 0: STOREFRONT MENU QR ───────────────────────────────────── *@
+    @if (subTab == 0)
+    {
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <!-- Left Controls & Details -->
+            <div class="lg:col-span-6 space-y-6">
+                <div class="p-6 bg-surface border border-line rounded-card space-y-4">
+                    <h2 class="font-display font-bold text-ink text-lg">General Menu QR Code</h2>
+                    <p class="text-xs md:text-sm text-ink-muted">
+                        Place this QR at your counter, front window, or outdoor sandwich board for customers to scan and browse your live menu.
+                    </p>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-ink-muted mb-1.5">Direct Menu Link</label>
+                        <div class="flex gap-2">
+                            <input type="text" readonly value="@GetMenuUrl()"
+                                   class="flex-1 px-3 py-2 bg-bg border border-line rounded-xl text-xs text-ink font-mono select-all focus:outline-none" />
+                            <button type="button" @onclick="CopyMenuUrl"
+                                    class="px-4 py-2 bg-surface hover:bg-line border border-line text-ink font-semibold rounded-xl text-xs transition-colors flex items-center gap-1.5">
+                                @(isCopied ? "✓ Copied!" : "Copy Link")
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 flex flex-wrap gap-3">
+                        <button type="button" @onclick="PrintCard"
+                                class="px-5 py-2.5 bg-accent text-accent-ink font-bold rounded-pill text-xs md:text-sm hover:opacity-90 shadow-sm flex items-center gap-2 transition-all">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                            <span>Print Standee Card</span>
+                        </button>
+                        <a href="@GetQrImageUrl(GetMenuUrl(), 500)" download="RollUp-Menu-QR.png" target="_blank"
+                           class="px-4 py-2.5 bg-surface hover:bg-line border border-line text-ink font-semibold rounded-pill text-xs md:text-sm flex items-center gap-2 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            <span>Download High-Res PNG</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Preview Card -->
+            <div class="lg:col-span-6 flex justify-center">
+                <div class="w-full max-w-sm p-8 bg-surface text-ink border border-line rounded-3xl shadow-elevated text-center space-y-4">
+                    <div class="w-12 h-12 mx-auto rounded-2xl bg-accent flex items-center justify-center text-accent-ink font-bold text-xl shadow-md">
+                        ☕
+                    </div>
+                    <div>
+                        <h3 class="font-display font-bold text-2xl text-ink">@ActiveBranchName</h3>
+                        <p class="text-xs text-ink-muted mt-1.5">Scan to View Menu & Order</p>
+                    </div>
+
+                    <div class="p-4 bg-white rounded-2xl inline-block border border-white/20 shadow-inner">
+                        <img src="@GetQrImageUrl(GetMenuUrl(), 240)" alt="Menu QR" class="w-48 h-48 mx-auto" />
+                    </div>
+
+                    <div class="text-[11px] text-ink-muted">
+                        @if (!string.IsNullOrEmpty(ActiveBranchName))
+                        {
+                            <span class="text-accent font-semibold">@ActiveBranchName • </span>
+                        }
+                        <span>No app download required • Instant order & pay</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @* ── SUBTAB 1: PER-TABLE QR CODES ───────────────────────────────────── *@
+    @if (subTab == 1)
+    {
+        <div class="space-y-6">
+            <div class="p-6 bg-surface border border-line rounded-card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="font-display font-bold text-ink text-lg">Table QR Standees</h2>
+                    <p class="text-xs md:text-sm text-ink-muted">
+                        Orders scanned from these codes will automatically attach the table number to the kitchen ticket.
+                    </p>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <label class="text-xs text-ink-muted font-medium">Number of Tables:</label>
+                    <input type="number" min="1" max="50" @bind="tableCount"
+                           class="w-20 px-3 py-1.5 bg-bg border border-line rounded-xl text-ink text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-accent" />
+                </div>
+            </div>
+
+            <!-- Table Cards Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                @for (int i = 1; i <= tableCount; i++)
+                {
+                    var tableNum = i;
+                    var tableUrl = GetTableUrl(tableNum);
+                    <div class="p-5 bg-surface border border-line rounded-2xl shadow-subtle text-center space-y-3">
+                        <div class="flex items-center justify-between border-b border-line pb-2">
+                            <div class="text-left">
+                                <span class="text-xs font-bold text-ink uppercase tracking-wider block">@ActiveBranchName</span>
+                            </div>
+                            <span class="px-2.5 py-0.5 rounded-full bg-accent text-accent-ink text-xs font-bold">
+                                Table @tableNum
+                            </span>
+                        </div>
+
+                        <div class="p-3 bg-white rounded-xl inline-block border border-white/20">
+                            <img src="@GetQrImageUrl(tableUrl, 160)" alt="Table @tableNum QR" class="w-32 h-32 mx-auto" />
+                        </div>
+
+                        <div class="text-[11px] text-ink-muted font-mono truncate">
+                            @ActiveBranchName • Table @tableNum
+                        </div>
+
+                        <button type="button" @onclick="PrintCard"
+                                class="w-full py-1.5 bg-surface hover:bg-line border border-line text-ink text-xs font-semibold rounded-lg transition-colors">
+                            Print Standee
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @* ── SUBTAB 2: PRINTABLE MENU BOOKLET ────────────────────────────────── *@
+    @if (subTab == 2)
+    {
+        <div class="p-8 bg-surface border border-line rounded-card max-w-2xl mx-auto text-center space-y-6">
+            <div class="w-16 h-16 mx-auto rounded-3xl bg-accent/15 text-accent flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+            </div>
+
+            <div>
+                <h2 class="font-display font-bold text-ink text-2xl mb-1.5">Printable Dine-in Menu Booklet</h2>
+                <p class="text-xs md:text-sm text-ink-muted max-w-md mx-auto">
+                    Generate an elegant paper menu formatted specifically for A4 and Letter printing with prices, allergens, and categories.
+                </p>
+            </div>
+
+            <div class="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <a href="/manage/printable-menu" target="_blank"
+                   class="w-full sm:w-auto px-6 py-3 bg-accent text-accent-ink font-bold rounded-pill text-sm hover:opacity-90 shadow-sm flex items-center justify-center gap-2 transition-all">
+                    <span>Open Printable Booklet</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                </a>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private int subTab = 0;
+    private int tableCount = 12;
+    private bool isCopied = false;
+    private TenantBrandingDto branding = new() { BusinessName = "RollUp Café" };
+    private List<RollUp.Core.Entities.Outlet> outlets = new();
+
+    private string ActiveBranchName =>
+        OutletService.ActiveOutlet?.Name ??
+        (outlets.FirstOrDefault(o => o.Id == OutletService.ActiveOutletId)?.Name ?? "Main Branch");
+
+    protected override async Task OnInitializedAsync()
+    {
+        OutletService.OnActiveOutletChanged += HandleBranchChanged;
+        try
+        {
+            await OutletService.InitializeActiveOutletAsync();
+            outlets = await OutletService.GetOutletsAsync();
+            branding = await BrandingService.GetBrandingAsync();
+        }
+        catch { }
+    }
+
+    private async void HandleBranchChanged()
+    {
+        await InvokeAsync(async () =>
+        {
+            try
+            {
+                outlets = await OutletService.GetOutletsAsync();
+            }
+            catch { }
+            StateHasChanged();
+        });
+    }
+
+
+    public void Dispose()
+    {
+        OutletService.OnActiveOutletChanged -= HandleBranchChanged;
+    }
+
+    private string GetMenuUrl()
+    {
+        var baseUri = Navigation.BaseUri.TrimEnd('/');
+        var outletId = OutletService.ActiveOutletId;
+        return outletId.HasValue ? $"{baseUri}/order?outletId={outletId.Value}" : $"{baseUri}/order";
+    }
+
+    private string GetTableUrl(int tableNum)
+    {
+        var baseUri = Navigation.BaseUri.TrimEnd('/');
+        var outletId = OutletService.ActiveOutletId;
+        return outletId.HasValue
+            ? $"{baseUri}/order?outletId={outletId.Value}&table={tableNum}"
+            : $"{baseUri}/order?table={tableNum}";
+    }
+
+    private string GetQrImageUrl(string data, int size)
+    {
+        var encoded = Uri.EscapeDataString(data);
+        return $"https://api.qrserver.com/v1/create-qr-code/?size={size}x{size}&data={encoded}&margin=10";
+    }
+
+    private async Task CopyMenuUrl()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", GetMenuUrl());
+            isCopied = true;
+            await Task.Delay(2500);
+            isCopied = false;
+        }
+        catch { }
+    }
+
+    private async Task PrintCard()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("window.print");
+        }
+        catch { }
+    }
+}

@@ -1,8 +1,10 @@
-﻿{
+{
   "name": "rollup",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "build:css": "tailwindcss -i ./wwwroot/css/app.input.css -o ./wwwroot/css/app.css",
+    "watch:css": "tailwindcss -i ./wwwroot/css/app.input.css -o ./wwwroot/css/app.css --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -12,9 +14,6 @@
     "autoprefixer": "^10.5.0",
     "postcss": "^8.5.14",
     "tailwindcss": "^3.4.17"
-  },
-  "dependencies": {
-    "@tailwindcss/cli": "^4.3.0"
   },
   "description": ""
 }

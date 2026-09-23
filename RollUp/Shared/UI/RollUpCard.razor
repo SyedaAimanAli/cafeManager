@@ -1,7 +1,8 @@
+@* RollUpCard — surface container with optional header and footer slots *@
 <div class="@GetCardClass()">
     @if (Header != null)
     {
-        <div class="px-4 py-3 border-b border-stone-100 bg-stone-50/50">
+        <div class="px-4 py-3 border-b border-line bg-surface/50">
             @Header
         </div>
     }
@@ -10,7 +11,7 @@
     </div>
     @if (Footer != null)
     {
-        <div class="px-4 py-3 border-t border-stone-100 bg-stone-50/50 mt-auto">
+        <div class="px-4 py-3 border-t border-line bg-surface/50 mt-auto">
             @Footer
         </div>
     }
@@ -25,6 +26,6 @@
 
     private string GetCardClass()
     {
-        return $"bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden flex flex-col {Class}";
+        return $"bg-surface rounded-card border border-line shadow-card overflow-hidden flex flex-col {Class}";
     }
 }

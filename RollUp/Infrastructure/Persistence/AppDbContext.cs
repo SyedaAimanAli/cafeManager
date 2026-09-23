@@ -1,4 +1,4 @@
-﻿using RollUp.Core.Entities;
+using RollUp.Core.Entities;
 using RollUp.Core.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,6 +26,7 @@ public class AppDbContext : DbContext
     public DbSet<QueueEntry> QueueEntries => Set<QueueEntry>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
+    public DbSet<OutletMenuItemAvailability> OutletItemAvailabilities => Set<OutletMenuItemAvailability>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -125,6 +126,12 @@ public class AppDbContext : DbContext
             e.Property(m => m.Price).HasPrecision(18, 2);
         });
 
+        // ── OutletMenuItemAvailability ────────────────────────────────────────
+        modelBuilder.Entity<OutletMenuItemAvailability>(e =>
+        {
+            e.HasIndex(x => new { x.OutletId, x.MenuItemId }).IsUnique();
+        });
+
         // ── Order ─────────────────────────────────────────────────────────────
         modelBuilder.Entity<Order>(e =>
         {
@@ -196,6 +203,17 @@ public class AppDbContext : DbContext
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var currentTenantId = _tenantContext?.CurrentTenantId;
+        if (!currentTenantId.HasValue || currentTenantId.Value == 0)
+        {
+            var fallbackTenantId = Tenants.IgnoreQueryFilters()
+                .OrderByDescending(t => t.UpdatedAt ?? t.CreatedAt)
+                .Select(t => t.Id)
+                .FirstOrDefault();
+            if (fallbackTenantId > 0)
+            {
+                currentTenantId = fallbackTenantId;
+            }
+        }
 
         foreach (var entry in ChangeTracker.Entries<Core.Entities.BaseEntity>())
         {

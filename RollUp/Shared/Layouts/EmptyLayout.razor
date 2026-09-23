@@ -1,0 +1,29 @@
+@inherits LayoutComponentBase
+
+<HeadContent>
+    <style>
+        :root {
+            --color-accent: #ff5a1f;
+            --color-accent-ink: #ffffff;
+            --color-accent-muted: rgba(255, 90, 31, 0.20);
+            --font-display: 'Bricolage Grotesque', sans-serif;
+            --color-surface: #0d0d0f;
+            --color-bg: #000000;
+            --color-ink: #fafaf9;
+            --color-ink-muted: #a1a1aa;
+            --color-ink-faint: #71717a;
+            --color-line: #1c1c20;
+        }
+        html, body {
+            background-color: #000000 !important;
+            color: #fafaf9 !important;
+        }
+        h1, h2, h3, h4, .font-display {
+            font-family: var(--font-display), 'Bricolage Grotesque', sans-serif !important;
+        }
+    </style>
+</HeadContent>
+
+<div class="min-h-screen bg-black text-ink font-body">
+    @Body
+</div>
