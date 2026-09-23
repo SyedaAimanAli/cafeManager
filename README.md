@@ -1,389 +1,365 @@
-# ☕ RollUp - Multi-Tenant Cafe Management Platform
+# ☕ RollUp — Multi-Tenant, Multi-Branch Cafe Management Platform
 
-A modern, high-performance cafe operations and customer ordering platform built with **Blazor Server** and **ASP.NET Core 10 / PostgreSQL**. Features real-time kitchen queues, table QR ordering, dynamic branding design studios, printable menus, and detailed analytics.
+A real-time cafe and food-truck operations platform built on **Blazor Server** and
+**ASP.NET Core**, covering the full loop from a customer scanning a table QR code to
+kitchen staff clearing the order off a live Kanban board — across as many branches as a
+tenant operates, with live cross-branch analytics and a dark, brand-tinted UI throughout.
 
-![License](https://img.shields.io/badge/License-MIT-blue.svg)
-![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet)
-![Language](https://img.shields.io/badge/Language-C%23-239120?logo=csharp)
-![Container](https://img.shields.io/badge/Container-Podman%20%7C%20Docker-purple?logo=podman)
-
----
-
-## 🚀 Production Deployment Guide (RHEL / Podman / Nginx)
-
-This repository includes automated container configurations and deployment scripts for Linux RHEL servers using **Podman**, **Nginx reverse proxy**, and **PostgreSQL**, exposed on port **`5088`** for domain **`rollup.eraconnect.net`**.
-
-### 1. Clone & Quick Deploy with Podman
-```bash
-git clone https://github.com/your-username/RollUp.git
-cd RollUp/RollUp
-
-# Run the automated deployment script (builds image, stops previous container, runs on port 5088)
-chmod +x deploy-podman.sh
-./deploy-podman.sh
-```
-
-*(Alternatively with podman-compose)*:
-```bash
-podman-compose up -d --build
-```
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](#license)
+[![.NET](https://img.shields.io/badge/.NET-8-512BD4?logo=dotnet)](#tech-stack)
+[![Language](https://img.shields.io/badge/Language-C%23-239120?logo=csharp)](#tech-stack)
+[![Styling](https://img.shields.io/badge/Styling-Tailwind%20CSS-38BDF8?logo=tailwindcss)](#design-system)
+[![Realtime](https://img.shields.io/badge/Realtime-SignalR-2E7D32)](#real-time-engine)
 
 ---
 
-### 2. Configure Environment & Database (PostgreSQL)
-To customize database credentials, pass environment variables to `deploy-podman.sh` or edit `docker-compose.yml`:
-```bash
-export DB_HOST="127.0.0.1"      # or host.containers.internal
-export DB_PORT="5432"
-export DB_NAME="rollup"
-export DB_USER="postgres"
-export DB_PASS="your_secure_password"
+## Table of Contents
 
-./deploy-podman.sh
-```
-
----
-
-### 3. Configure Nginx Reverse Proxy (`rollup.eraconnect.net`)
-Copy the provided [`nginx-rollup.conf`](file:///home/adnan/repos/RollUp/RollUp/nginx-rollup.conf) to your Nginx configuration directory:
-
-```bash
-sudo cp nginx-rollup.conf /etc/nginx/conf.d/rollup.conf
-```
-
-**Nginx Configuration (`/etc/nginx/conf.d/rollup.conf`)**:
-```nginx
-# WebSocket / SignalR Connection Upgrade
-map $http_upgrade $connection_upgrade {
-    default upgrade;
-    ''      close;
-}
-
-server {
-    listen 80;
-    server_name rollup.eraconnect.net;
-
-    location / {
-        proxy_pass http://127.0.0.1:5088;
-        
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $connection_upgrade;
-        
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        
-        # SignalR long-lived WebSocket timeout
-        proxy_read_timeout 86400s;
-        proxy_send_timeout 86400s;
-        proxy_buffering off;
-    }
-}
-```
+- [Overview](#overview)
+- [Quick Start](#quick-start)
+- [Features](#features)
+- [Design System](#design-system)
+- [Onboarding Flow](#onboarding-flow)
+- [Navigation & Routes](#navigation--routes)
+- [Multi-Branch Management](#multi-branch-management)
+- [Real-Time Engine](#real-time-engine)
+- [Tech Stack](#tech-stack)
+- [Architecture](#architecture)
+- [Project Structure](#project-structure)
+- [Authentication & Route Guards](#authentication--route-guards)
+- [Getting Started (from source)](#getting-started-from-source)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
-### 4. Enable SSL with Let's Encrypt
+## Overview
+
+RollUp streamlines the entire cafe workflow: a customer browses a dynamic, tag-searchable
+menu (via a table QR code or a shared link), places an order with sizes and add-ons, and
+watches it move through **Pending → Cooking → Ready** in real time. Kitchen staff work off
+a live Kanban queue with audio alerts for new tickets; admins manage menu items, branches,
+team members, and branding from a dedicated dashboard that updates every connected screen
+the instant a setting changes — no reload, no stale tab.
+
+A tenant can run **multiple branches** (cafés, food trucks, kiosks, bakeries, bistros,
+restaurants) under one account, switch which branch is "active" from anywhere in the app,
+and see queue, insights, and QR codes scope themselves to that branch automatically.
+
+The app runs self-contained against SQLite out of the box (seeded with a demo tenant,
+outlet, categories, and admin account), and is built to run against PostgreSQL in
+production.
+
+## Quick Start
+
 ```bash
-sudo certbot --nginx -d rollup.eraconnect.net
-sudo nginx -t && sudo systemctl reload nginx
+dotnet run --project RollUp.csproj
 ```
-Your app is now securely live at **`https://rollup.eraconnect.net`**!
 
----
+The app comes up at **http://localhost:5000**, backed by a seeded SQLite database
+(`rollup.db`).
 
-## 📖 Overview
+**Demo login:**
+| | |
+|---|---|
+| Email | `admin@rollup.com` |
+| Password | `Admin123!` |
 
-RollUp is a full-stack cafe management platform that streamlines the entire customer experience—from browsing a dynamic menu to real-time order tracking—while providing kitchen staff with an efficient Kanban-style dashboard for order management.
+A one-click demo-login button is also available directly on `/login`.
 
-### Key Highlights
--  **Real-time Updates** using SignalR for instant order tracking
--  **Responsive Design** with Tailwind CSS custom design system
--  **Modern UI Components** with "Cafe Espresso" aesthetic
--  **Smart Notifications** with audio alerts for incoming orders
--  **Persistent Storage** using Entity Framework Core + PostgreSQL
-
-##  Features
+## Features
 
 ### Customer Experience
-- **Smart Menu Display** - Categorized items with popular highlights and tag-based search
-- **Dynamic Ordering** - Support for item variants (sizes) and customizable add-ons
-- **Intelligent Cart** - Automatically merges identical items for a clean checkout
-- **Live Order Tracking** - Real-time status updates (Pending → Cooking → Ready)
-- **Order History** - Local browser storage for cart persistence
+- Categorized, tag-searchable menu with popular-item highlights
+- Item variants (sizes) and customizable add-ons
+- Cart that automatically merges identical items (matching variant + add-ons)
+- Live order tracking (Pending → Cooking → Ready), synced over SignalR
+- Three switchable menu layouts (see [Design System](#design-system))
+- Table-specific ordering via `/order/{TableNumber}`
 
 ### Kitchen Operations
-- **Kanban Dashboard** - Visual order management with drag-and-drop status updates
-- **Audio Alerts** - Sound notifications for incoming orders
-- **Real-time Queue** - Instant synchronization across all kitchen displays
-- **Queue Analytics** - Monitor order processing times and queue status
+- Three-column Kanban queue (New Orders / Preparing / Ready) on desktop, a segmented
+  tab switcher with count badges on mobile
+- Audio alert on every incoming order
+- Branch-scoped: the queue only shows orders for the currently active branch
+- Dedicated read-only display route (`/display`) for a kitchen monitor/TV
 
-### Admin Management
-- **Menu Management** - Add, edit, and organize menu items and categories
-- **Outlet Control** - Manage multiple cafe outlets
-- **Category Organization** - Group items with custom tags and filters
-- **System Configuration** - Configure payment methods and subscription plans
+### Admin & Operations
+- **Menu** — item catalog with category filters, search, sold-out toggles, and a
+  **Design Studio** for live-previewing theme, layout, typography, and accent color
+- **Insights** — revenue/order-count trend chart, peak rush-hour bar chart, top
+  products, category share breakdown, with Today / This Week / This Month / All Time
+  and per-branch filtering
+- **Share** — Menu QR, per-table QR standees, and a printable paper menu, all scoped to
+  the active branch
+- **Manage** — branches & profile, categories, team members & roles, accepted payment
+  methods, currency settings
 
-##  Tech Stack
+## Design System
 
-| Component | Technology |
-|-----------|-----------|
-| **Frontend Framework** | Blazor Server (ASP.NET Core 8) |
-| **Real-time** | SignalR WebSockets |
-| **Styling** | Tailwind CSS v3.4 |
-| **Database** | PostgreSQL |
-| **ORM** | Entity Framework Core 8 |
-| **Architecture** | Clean Architecture with Repository Pattern |
+The app defaults to a **dark theme app-wide**, driven entirely by CSS custom properties
+so a tenant's brand color propagates live to every surface without a rebuild or reload.
 
-##  Project Structure
+**Base palette (dark, default):**
+| Token | Value | Use |
+|---|---|---|
+| `--color-bg` | `#09090b` | App background |
+| `--color-surface` | `#18181b` | Cards, panels, modals |
+| `--color-ink` | `#fafaf9` | Primary text |
+| `--color-ink-muted` | `#a1a1aa` | Secondary text |
+| `--color-line` | `#27272a` | Borders, dividers |
+| `--color-accent` / `--color-accent-ink` | tenant-configurable | Buttons, active states, focus rings |
+
+**Typography:** `Bricolage Grotesque` (display/headings), `DM Sans` (body),
+`Fraunces` (editorial/classic style), switchable per tenant via `HeadingFont`.
+
+**Theme presets** (set accent, typography, and palette together): `Bistro Classic`,
+`Modern Minimal`, `Rustic Warmth`, `Clean Slate`, `Artisan Luxury` — internally keyed as
+`bistro`, `modern`, `rustic`, `minimalist`, `elegant`.
+
+**Menu layouts**, switchable live in Design Studio: `card` (multi-column photo cards),
+`list` (editorial horizontal rows), `compact` (fast-order thin rows).
+
+**Live sync:** `IBrandingService.OnBrandingChanged` broadcasts across circuits, so a
+branding change made in Design Studio or Setup applies instantly to the admin dashboard
+*and* to any open customer menu tab, with no page reload on either side.
+
+**Note on public vs. authenticated shell:** `EmptyLayout` (used for `/welcome`, `/login`,
+`/register`, `/setup`) always renders with a black background and the electric-orange
+brand accent (`#ff5a1f`), independent of any tenant's saved color. `MainLayout` (the
+authenticated workspace) uses the tenant's actual saved `CustomAccentColor`, defaulting to
+Emerald Mint (`#10b981`) if none is set — `#ff5a1f` remains available as a selectable
+"Electric Orange" swatch, it's just no longer the workspace default.
+
+## Onboarding Flow
+
+New tenants go through a guided path rather than landing straight in the dashboard:
 
 ```
-RollUp/
-├── API/                          # REST API endpoints
-│   ├── Controllers/              # MenuController, OrdersController, etc.
-│   ├── Hubs/                     # SignalR hubs for real-time updates
-│   └── Middleware/               # Exception handling & cross-cutting concerns
-│
-├── Application/                  # Application layer (DTOs & Services)
-│   ├── DTOs/                     # Data transfer objects
-│   └── Services/                 # Business logic & domain services
-│
-├── Core/                         # Domain layer
-│   ├── Entities/                 # Database models (Order, MenuItem, etc.)
-│   ├── Enums/                    # Domain enumerations
-│   ├── Interfaces/               # Service contracts
-│   ├── Models/                   # Domain models
-│   └── Services/                 # Core business logic
-│
-├── Infrastructure/               # Infrastructure layer
-│   ├── Authentication/           # JWT token provider
-│   ├── Persistence/              # Database context & migrations
-│   └── Repositories/             # Generic repository pattern
-│
-├── Features/                     # Razor components (Pages & UI)
-│   ├── Admin/                    # Admin management pages
-│   ├── CustomerMenu/             # Customer menu browsing
-│   └── Queue/                    # Kitchen queue display
-│
-├── Shared/                       # Shared components
-│   ├── Layouts/                  # MainLayout component
-│   └── UI/                       # Reusable UI components (RollUpButton, etc.)
-│
-├── Pages/                        # Razor pages (_Host.cshtml, Error pages)
-├── Styles/                       # Global CSS
-├── wwwroot/                      # Static assets (CSS, JS)
-├── Migrations/                   # EF Core database migrations
-└── Program.cs                    # Application startup configuration
+/welcome  →  /register  →  /setup (7 steps)  →  /queue
 ```
 
-##  Architecture
+- **`/welcome`** — marketing splash, dark background, ambient glow, "Register Café" and
+  "Sign In" calls to action.
+- **`/register`** — single-page form creating the tenant and owner account; issues a JWT
+  and redirects straight into setup.
+- **`/setup`** — a 7-step wizard (`WizardStep.razor`), state held in one component, no
+  reloads between steps, a Skip option on every step:
+  1. **Basics** — business name, outlet type (`Cafe`, `FoodTruck`, `Kiosk`, `Restaurant`)
+  2. **Branding** — pick a template preset, fine-tune the accent color, see a live phone
+     preview update as you go
+  3. **Outlet** — location name, street address, city, phone
+  4. **Categories** — preset chips plus free-text custom categories
+  5. **Menu items** — add a handful of starter items with price and category
+  6. **Payments** — toggle Cash / Card / Mobile wallet
+  7. **Review & launch** — a summary card per step with edit-back links, then a
+     celebratory completion screen linking into `/queue` or `/menu`
+- **`/login`** — redirects straight to `/queue` on success; includes the one-click demo
+  login.
+- **`/`** — a smart router: authenticated visitors go to `/queue`, anonymous visitors go
+  to `/welcome`.
 
-RollUp follows **Clean Architecture** principles with clear separation of concerns:
+## Navigation & Routes
+
+Every authenticated page runs inside `MainLayout` — a sticky left sidebar on screens
+≥900px, a fixed bottom tab bar with count badges on mobile.
+
+| Destination | Primary route | Aliases | Notes |
+|---|---|---|---|
+| Queue | `/queue` | `/admin/queue`, `/kitchen` | Staff-facing live Kanban |
+| Kitchen display | `/display` | `/queue/display` | Read-only board for a kitchen monitor |
+| Menu (admin) | `/menu` | — | Items Catalog / Design Studio segmented view |
+| Menu (customer) | `/menu/browse`, `/menu/browse/{TableNumber}` | `/order`, `/order/{TableNumber}` | Customer-facing ordering |
+| Share | `/share` | — | Menu QR, table QRs, printable menu |
+| Insights | `/insights` | `/insight` | Analytics dashboard |
+| Manage | `/manage` | — | Branches, categories, team, payments, currency |
+
+`/queue` and `/menu` previously collided with `QueueDisplay.razor` and the customer
+`CustomerMenu.razor` component respectively, since both declared the same route. That's
+resolved: staff-facing routes keep the short paths, customer/display routes moved to the
+paths shown above.
+
+## Multi-Branch Management
+
+A tenant can operate several branches from one account.
+
+- **Add a branch** from `/manage` → Branches & Locations → "+ Add Branch": name, outlet
+  type (Café / Bakery / Kiosk / Bistro / Restaurant / Food Truck), address, phone.
+- **Branch cards** show type, address, phone, and an "Active Branch" badge with a live
+  pulse indicator on whichever branch is currently selected.
+- **Branch info panel** (click any card): live queue counts by status, today's order
+  count, today's revenue, and quick links into that branch's kitchen queue or customer
+  menu.
+- **Global switcher**: a branch picker lives under the logo in the desktop sidebar and in
+  the mobile header, so switching branches doesn't require a trip to Settings.
+- **Switching is instant and app-wide**: Queue re-filters its Kanban board, Insights
+  re-scopes its charts and filters, Manage updates its "active" badge, and Share
+  regenerates QR codes/standees with the new `?outletId=`, all without a page reload.
+- **Tenant isolation is enforced at the service layer** — `OutletService` scopes every
+  query to `TenantId`, so one tenant's branches never leak into another's dropdown, queue,
+  or analytics.
+
+## Real-Time Engine
+
+SignalR keeps order status and branch context in sync across every open screen:
+
+- Order status changes broadcast to the customer's tracker and the kitchen board
+  simultaneously — no polling.
+- Kitchen alerts play through `IJSRuntime` calling `wwwroot/js/audio.js`, since Blazor
+  Server can't trigger browser audio directly; playback is gated on the browser's
+  autoplay policy, enabled after the user's first interaction with the page.
+- `IBrandingService.OnBrandingChanged` and `OutletService.OnActiveOutletChanged` extend
+  the same "everything stays in sync" model to branding and active-branch state, not just
+  order status.
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend framework | Blazor Server (ASP.NET Core 8) |
+| Real-time | SignalR (WebSockets) |
+| Styling | Tailwind CSS (JIT), semantic CSS-custom-property token system |
+| Database | PostgreSQL in production; SQLite fallback/local dev, auto-detected at startup |
+| ORM | Entity Framework Core 8 |
+| Auth | JWT-based, `[Authorize]` route guards, `AuthorizeRouteView` + `RedirectToLogin` |
+| Architecture | Clean Architecture + Repository pattern, multi-tenant with per-tenant data isolation |
+| Image storage | Base64-encoded strings, stored directly in the database |
+
+## Architecture
 
 ```
 ┌─────────────────────────────────┐
-│   Presentation (Razor Pages)    │
+│   Presentation (Razor Pages)    │   Features/, Shared/, Pages/
 ├─────────────────────────────────┤
-│   Application (DTOs, Services)  │
+│   Application (DTOs, Services)  │   Application/
 ├─────────────────────────────────┤
-│   Core (Entities, Interfaces)   │
+│   Core (Entities, Interfaces)   │   Core/
 ├─────────────────────────────────┤
-│  Infrastructure (DB, Repos)     │
+│  Infrastructure (DB, Repos)     │   Infrastructure/
 └─────────────────────────────────┘
 ```
 
-### Key Patterns
-- **Repository Pattern** - Abstract data access layer
-- **Dependency Injection** - Loose coupling via service container
-- **Service Layer** - Centralized business logic
-- **Entity Framework** - ORM for database operations
-- **SignalR Hubs** - Real-time communication channels
+Key patterns: repository pattern for data access, dependency injection throughout,
+service-layer business logic, SignalR hubs per real-time concern, soft deletes
+(`IsDeleted`) instead of hard deletes, eager loading (`.Include()`) to avoid N+1 queries,
+and `AsNoTracking()` on read-only queries.
 
-##  Getting Started
+## Project Structure
+
+```
+RollUp/
+├── API/                          # REST endpoints & SignalR hubs (OrderHub, QueueHub)
+├── Application/                  # DTOs & application services
+├── Core/
+│   ├── Entities/                 # MenuItem, Category, Order, Outlet, Tenant, etc.
+│   ├── Services/                 # OutletService, MenuService, OrderNotificationService…
+│   └── Interfaces/
+├── Infrastructure/
+│   ├── Authentication/           # JWT token provider
+│   └── Persistence/               # AppDbContext, migrations, tenant-scoping logic
+├── Pages/                        # Welcome, Login, Register, Setup, _Layout.cshtml
+├── Features/
+│   ├── Admin/                    # Menu, Manage, Insights, Share (+ Components/)
+│   ├── CustomerMenu/              # Customer-facing ordering UI
+│   └── Queue/                    # Staff Kanban + Components/ (OrderKanbanCard, QueueColumn)
+├── Shared/
+│   ├── Layouts/                  # MainLayout (authenticated), EmptyLayout (public)
+│   └── UI/                       # RollUpButton, RollUpModal, WizardStep, RollUpToggleSwitch…
+└── wwwroot/
+    ├── css/app.css                # Compiled Tailwind output
+    └── js/audio.js                # Kitchen alert sound
+```
+
+## Authentication & Route Guards
+
+- Every system page (`Queue`, `Menu`, `Manage`, `Insights`, `Share`, `PrintableMenu`,
+  `Setup`) carries `@attribute [Authorize]`; `App.razor` wraps routing in
+  `<AuthorizeRouteView>` with `<RedirectToLogin />` so an unauthorized route attempt
+  redirects to `/login` automatically.
+- **Back-button hardening**: logging in navigates to `/queue` with history replaced
+  (`replace: true`), so pressing Back afterward doesn't return to `/login`. Logging out
+  does the same in reverse into `/login`, and `MainLayout` subscribes to
+  `NavigationManager.LocationChanged` to intercept any client-side history navigation
+  while signed out.
+- `/login`, `/register`, and `/welcome` each guard against an already-authenticated user
+  landing on them — they redirect straight to `/queue` instead.
+- Email validation on registration is strict (`^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$` plus a
+  `MailAddress.TryCreate` check) to reject malformed addresses before an account is created.
+
+## Getting Started (from source)
 
 ### Prerequisites
-- **.NET 8 SDK** ([Download](https://dotnet.microsoft.com/download/dotnet/8.0))
-- **Node.js** (for npm dependencies)
-- **PostgreSQL** (Required for database operations)
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- Node.js (Tailwind build pipeline)
+- PostgreSQL for production use (optional locally — SQLite is used automatically if
+  PostgreSQL isn't reachable at startup)
 
-### Installation
+### Install & run
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/SyedaAimanAli/RollUp.git
-   cd RollUp
-   ```
-
-2. **Install dependencies**
-   ```bash
-   cd RollUp
-   npm install
-   dotnet restore
-   ```
-
-3. **Configure database connection**
-   
-   Edit `RollUp/appsettings.json`:
-   ```json
-   {
-     "ConnectionStrings": {
-       "DefaultConnection": "Host=localhost;Database=rollup;User Id=postgres;Password=yourpassword;"
-     }
-   }
-   ```
-
-4. **Apply database migrations**
-   ```bash
-   dotnet ef database update
-   ```
-
-5. **Run the application**
-   ```bash
-   dotnet run --project RollUp.csproj
-   ```
-
-6. **Access the application**
-   -  Customer Menu: `http://localhost:5000`
-   -  Admin Panel: `http://localhost:5000/kitchen`
-   -  Kitchen Queue: `http://localhost:5000/queue`
-
-## 🔌 API Endpoints
-
-### Authentication
-```
-POST   /api/auth/register      - Register new user
-POST   /api/auth/login         - Login user
-POST   /api/auth/logout        - Logout user
-```
-
-### Menu Management
-```
-GET    /api/menu               - Get all menu items
-GET    /api/menu/{id}          - Get menu item details
-POST   /api/menu               - Create menu item (Admin)
-PUT    /api/menu/{id}          - Update menu item (Admin)
-DELETE /api/menu/{id}          - Delete menu item (Admin)
-```
-
-### Orders
-```
-GET    /api/orders             - Get user orders
-POST   /api/orders             - Create new order
-GET    /api/orders/{id}        - Get order details
-PUT    /api/orders/{id}        - Update order status
-GET    /api/orders/{id}/status - WebSocket for real-time updates
-```
-
-### Queue Management
-```
-GET    /api/queue              - Get current queue
-PUT    /api/queue/{id}/status  - Update order status (Kitchen)
-GET    /api/queue/stats        - Get queue statistics
-```
-
-##  Developer Insights
-
-### Real-time Engine (SignalR)
-SignalR manages WebSocket connections for instant updates across all connected clients. When an order status changes, notifications are broadcast to customers and kitchen staff simultaneously.
-
-**Key Files:**
-- [OrderHub.cs](RollUp/API/Hubs/OrderHub.cs) - Order update hub
-- [QueueHub.cs](RollUp/API/Hubs/QueueHub.cs) - Queue status hub
-
-### Audio Notifications
-Audio alerts use JavaScript interop to trigger browser notifications. The system waits for user interaction to enable audio due to browser autoplay restrictions.
-
-**Files:**
-- [audio.js](RollUp/wwwroot/js/audio.js) - Audio playback handler
-- [OrderNotificationService.cs](RollUp/Core/Services/OrderNotificationService.cs)
-
-### Image Storage
-Menu item images are stored as Base64 strings in the database, eliminating the need for external storage services while keeping the system self-contained.
-
-### Performance Optimizations
-- **AsNoTracking** - Used for read-only queries to reduce memory overhead
-- **Eager Loading** - `.Include()` prevents N+1 database problems
-- **Soft Deletes** - `IsDeleted` flag preserves data integrity
-
-##  Testing
-
-Run unit tests:
 ```bash
-dotnet test
+git clone https://github.com/shahsaab/RollUp.git
+cd RollUp/RollUp
+
+npm install
+dotnet restore
+
+# Build the Tailwind CSS output
+npm run build:css
+
+dotnet ef database update
+dotnet run --project RollUp.csproj
 ```
 
-##  Database Schema
+Then open **http://localhost:5000** and log in with the demo credentials above, or
+register a new tenant through `/welcome`.
 
-### Core Tables
-- **Users** - Customer and staff accounts
-- **MenuItems** - Cafe menu items with pricing
-- **Categories** - Menu item categorization
-- **Orders** - Customer orders with timestamps
-- **OrderItems** - Individual items within orders
-- **OrderAddons** - Customizations (extra toppings, etc.)
-- **Payments** - Payment transaction records
-- **QueueEntries** - Real-time kitchen queue
+### Configuration
 
-##  Contributing
+Edit `RollUp/appsettings.json` for your database connection:
 
-Contributions are welcome! Here's how to get started:
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Database=rollup;User Id=postgres;Password=yourpassword;"
+  }
+}
+```
+
+## Troubleshooting
+
+**A branch or data from another account is showing up**
+Tenant scoping depends on `ITenantContext.CurrentTenantId` being populated *before* any
+outlet/branch query runs. If you see cross-tenant data, confirm authentication state
+resolves before `MainLayout` loads branches — this was a real bug (see the "Tenant Branch
+Isolation" fix), now guarded against in `OutletService`, but worth knowing if you're
+extending that code path.
+
+**Accent color reverts unexpectedly**
+Check that `wwwroot/css/app.css` was rebuilt (`npm run build:css`) after any token change,
+and that the tenant's `CustomAccentColor` in the database wasn't overwritten by a bulk
+update or migration — `MainLayout` and `CustomerMenu` fall back to Emerald Mint
+(`#10b981`) if the saved value is missing, not to orange.
+
+**Audio not playing on new orders**
+Confirm the browser tab isn't muted and that the user has interacted with the page at
+least once — autoplay restrictions block `audio.js` until then.
+
+**SignalR not updating live**
+Confirm WebSockets are enabled on the host and that hub endpoints are mapped correctly in
+`Program.cs`; check firewall rules if deploying behind a reverse proxy.
+
+## Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit with a clear, descriptive message
+4. Push and open a Pull Request
 
-Please ensure:
-- Code follows C# naming conventions
-- Commits have clear, descriptive messages
-- New features include appropriate error handling
-- Database changes include migrations
+Please ensure: code follows standard C# conventions, any schema change ships with a
+migration, and new tenant-scoped data goes through the existing tenant-isolation pattern
+in `OutletService`/`AppDbContext` rather than a new ad hoc filter.
 
-##  Documentation
+## License
 
-- [Project Summary](RollUp/ProjectSummary.md) - Detailed technical breakdown
-- [Architecture Decisions](docs/ARCHITECTURE.md) - Design rationale (coming soon)
-- [API Documentation](docs/API.md) - Comprehensive endpoint reference (coming soon)
-
-##  Troubleshooting
-
-### SignalR Connection Issues
-- Ensure WebSockets are enabled on your hosting environment
-- Check firewall settings allow persistent connections
-- Verify SignalR hub endpoints are correctly mapped in `Program.cs`
-
-### Database Connection Errors
-- Verify PostgreSQL is running and accessible
-- Check connection string in `appsettings.json`
-- Run `dotnet ef database update` to apply migrations
-
-### Audio Not Playing
-- Ensure browser hasn't muted the tab
-- Check browser console for JavaScript errors in `audio.js`
-- Verify user has interacted with the page before audio playback
-
-##  License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-##  Author
-
-**Aiman Ali**
-- GitHub: [@SyedaAimanAli](https://github.com/SyedaAimanAli)
-- Email: aimanali122007@gmail.com
-
-##  Acknowledgments
-
-- ASP.NET Core team for excellent documentation
-- SignalR for real-time capabilities
-- Tailwind CSS for utility-first styling
-- Entity Framework Core team for powerful ORM features
-
----
-
-**Made with ☕ by Aiman Ali**
-
-Have questions or suggestions? Feel free to open an issue or reach out!
+Licensed under the MIT License — see the `LICENSE` file for details.
